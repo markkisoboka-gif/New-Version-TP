@@ -6,7 +6,9 @@
   <meta name="theme-color" content="#000000"/>
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
-  <title>TradePrediction</title>
+  <meta name="apple-mobile-web-app-title" content="Systemic Asset Growth"/>
+  <meta name="application-name" content="Systemic Asset Growth"/>
+  <title>Systemic Asset Growth</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
     body{font-family:'Inter','Helvetica Neue',Arial,sans-serif;background:#fff;max-width:430px;margin:0 auto;min-height:100vh;}
@@ -342,6 +344,21 @@
   </div>
   <div id="drawdown-log-summary" style="display:none;font-size:11px;color:#9ca3af;margin-bottom:8px"></div>
   <div id="drawdown-log-list" style="display:none"></div>
+
+  <button onclick="toggleComparisonHistoryLog()" style="display:flex;justify-content:space-between;align-items:center;width:100%;background:none;border:none;cursor:pointer;padding:0;margin:20px 0 8px">
+    <span style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:1px" id="ch-log-toggle-label">Comparison History</span>
+    <span style="font-size:12px;color:#9ca3af" id="ch-log-toggle-arrow">Show ▾</span>
+  </button>
+  <div id="ch-log-filters" style="display:none;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+    <select id="ch-filter-asset" onchange="renderComparisonHistoryLog()" style="flex:1;min-width:120px;padding:8px;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;background:#fff">
+      <option value="">All Assets</option>
+    </select>
+    <input type="date" id="ch-filter-from" onchange="renderComparisonHistoryLog()" style="flex:1;min-width:120px;padding:8px;border:1px solid #e5e7eb;border-radius:8px;font-size:12px">
+    <input type="date" id="ch-filter-to" onchange="renderComparisonHistoryLog()" style="flex:1;min-width:120px;padding:8px;border:1px solid #e5e7eb;border-radius:8px;font-size:12px">
+    <button onclick="clearComparisonHistoryFilter()" style="padding:8px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;background:#f9fafb;cursor:pointer">Clear</button>
+  </div>
+  <div id="ch-log-summary" style="display:none;font-size:11px;color:#9ca3af;margin-bottom:8px"></div>
+  <div id="ch-log-list" style="display:none"></div>
 </div>
 
 <div class="bottom-nav">
@@ -402,6 +419,7 @@ function loadData(){
   blockState=load('blockState',{});
   cycleLog=load('cycleLog',[]);
   benchmarkTracking=load('benchmarkTracking',{});
+  comparisonHistory=load('comparisonHistory',[]);
   frictionEnabled=load('frictionEnabled',false);
 }
 
@@ -1059,6 +1077,94 @@ function renderDrawdownLog(){
   }).join('');
 }
 
+// ── Comparison History Log ──────────────────────────────────────────────────
+// Unlike Drawdown History (derived on the fly), this one is a genuine
+// permanent record — an entry is written the moment a benchmark comparison
+// ends (naturally or manually stopped), since once tracking is removed there
+// would otherwise be no trace it ever happened. Persisted in localStorage,
+// included in Export/Import, filterable by asset + date, most-recent-first.
+let comparisonHistoryLogExpanded=false;
+
+function toggleComparisonHistoryLog(){
+  comparisonHistoryLogExpanded=!comparisonHistoryLogExpanded;
+  renderComparisonHistoryLog();
+}
+
+function populateComparisonHistoryAssetFilter(){
+  const sel=document.getElementById('ch-filter-asset');
+  if(!sel||sel.options.length>1)return;
+  ALL.forEach(a=>{
+    const opt=document.createElement('option');
+    opt.value=a.id;opt.textContent=a.name;
+    sel.appendChild(opt);
+  });
+}
+
+function clearComparisonHistoryFilter(){
+  const assetSel=document.getElementById('ch-filter-asset');
+  const from=document.getElementById('ch-filter-from');
+  const to=document.getElementById('ch-filter-to');
+  if(assetSel)assetSel.value='';
+  if(from)from.value='';
+  if(to)to.value='';
+  renderComparisonHistoryLog();
+}
+
+function renderComparisonHistoryLog(){
+  const list=document.getElementById('ch-log-list');
+  const filtersBox=document.getElementById('ch-log-filters');
+  const summary=document.getElementById('ch-log-summary');
+  const arrow=document.getElementById('ch-log-toggle-arrow');
+  const label=document.getElementById('ch-log-toggle-label');
+  if(!list)return;
+
+  if(label)label.textContent=`Comparison History (${comparisonHistory.length})`;
+  if(arrow)arrow.textContent=comparisonHistoryLogExpanded?'Hide ▴':'Show ▾';
+  if(filtersBox)filtersBox.style.display=comparisonHistoryLogExpanded?'flex':'none';
+  if(summary)summary.style.display=comparisonHistoryLogExpanded?'block':'none';
+  list.style.display=comparisonHistoryLogExpanded?'block':'none';
+  if(!comparisonHistoryLogExpanded)return;
+
+  populateComparisonHistoryAssetFilter();
+  const assetFilter=document.getElementById('ch-filter-asset')?.value||'';
+  const fromVal=document.getElementById('ch-filter-from')?.value||'';
+  const toVal=document.getElementById('ch-filter-to')?.value||'';
+  const fromTs=fromVal?new Date(fromVal+'T00:00:00').getTime():null;
+  const toTs=toVal?new Date(toVal+'T23:59:59').getTime():null;
+
+  let entries=comparisonHistory.slice().sort((a,b)=>b.endedAt-a.endedAt);
+  if(assetFilter)entries=entries.filter(e=>e.assetId===assetFilter);
+  if(fromTs!=null)entries=entries.filter(e=>e.endedAt>=fromTs);
+  if(toTs!=null)entries=entries.filter(e=>e.endedAt<=toTs);
+
+  if(summary)summary.textContent=`Showing ${entries.length} of ${comparisonHistory.length} comparison${comparisonHistory.length!==1?'s':''}`;
+
+  if(!entries.length){
+    list.innerHTML=`<div style="text-align:center;color:#9ca3af;font-size:14px;padding:24px">${comparisonHistory.length?'No comparisons match this filter.':'No comparisons completed yet.'}</div>`;
+    return;
+  }
+  const fmtDT=ts=>new Date(ts).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+  const fmtDur=ms=>{
+    const days=Math.floor(ms/86400000),hrs=Math.floor((ms%86400000)/3600000);
+    if(days>0)return`${days}d ${hrs}h`;
+    const mins=Math.floor((ms%3600000)/60000);
+    return`${hrs}h ${mins}m`;
+  };
+  const modeLabels={open:'Open-ended',enddate:'End date',duration:'Duration'};
+  list.innerHTML=entries.map(e=>`<div style="border:1px solid #e5e7eb;border-radius:10px;padding:10px 12px;background:#fff;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span style="font-size:13px;font-weight:700">${e.flag} ${e.assetName}</span>
+        <span style="font-size:11px;font-weight:800;color:${e.beat?'#16a34a':'#dc2626'}">${e.beat?'✓ Beat buy & hold':'✗ Trailed buy & hold'}</span>
+      </div>
+      <div style="font-size:11px;color:#6b7280;display:flex;gap:14px;flex-wrap:wrap;margin-bottom:4px">
+        <span>Your trading: <strong style="color:${e.tradingPct>=0?'#16a34a':'#dc2626'}">${e.tradingPct>=0?'+':''}${e.tradingPct.toFixed(2)}%</strong></span>
+        <span>Buy &amp; hold: <strong style="color:${e.bmPct>=0?'#16a34a':'#dc2626'}">${e.bmPct>=0?'+':''}${e.bmPct.toFixed(2)}%</strong></span>
+      </div>
+      <div style="font-size:10px;color:#9ca3af">${modeLabels[e.timelineMode]||'Open-ended'} · Duration: ${fmtDur(e.endedAt-e.startedAt)} · ${e.endReason==='completed'?'Completed on schedule':'Stopped early'} · ${e.tradeCount} trade${e.tradeCount!==1?'s':''}</div>
+      <div style="font-size:10px;color:#9ca3af">${fmtDT(e.startedAt)} → ${fmtDT(e.endedAt)}</div>
+    </div>`).join('');
+}
+
 // ── Slippage & Friction ─────────────────────────────────────────────────────
 // A tiny simulated bid/ask spread applied to trade entries and exits when
 // enabled — mimics the small real-world cost of actually transacting rather
@@ -1274,6 +1380,7 @@ function renderHistory(){
   renderEarlyClosures();
   renderBenchmarkSection();
   renderDrawdownLog();
+  renderComparisonHistoryLog();
   const hl=document.getElementById('history-list');
   const arrow=document.getElementById('trade-history-toggle-arrow');
   const label=document.getElementById('trade-history-toggle-label');
@@ -1465,6 +1572,7 @@ function renderEarlyClosures(){
 // someone watching the asset page directly (without P&L access) can still
 // see the comparison and the date range note.
 let benchmarkTracking={};
+let comparisonHistory=[];
 let frictionEnabled=false;
 const FRICTION_PCT=0.0004; // tiny simulated bid/ask spread — 0.04% total, split half on entry, half on exit
 let bmSelectedAssets=new Set();
@@ -1524,6 +1632,7 @@ function startBenchmarkTracking(){
     benchmarkTracking[assetId]={
       startedAt:now,
       endAt,
+      timelineMode:bmTimelineMode,
       startPrice:p.current,
       startBalance:balances[assetId],
       priceLog:[{ts:now,price:p.current}]
@@ -1536,10 +1645,49 @@ function startBenchmarkTracking(){
   if(currentPage==='detail')renderDetail(currentDetailAsset);
 }
 
+// Shared calculation used by both the live card and the archived history
+// record, so the two can never disagree with each other.
+function computeBenchmarkResult(assetId){
+  const t=benchmarkTracking[assetId];
+  if(!t)return null;
+  const p=prices[assetId];
+  const currentPrice=p?.current??t.startPrice;
+  const bmPct=((currentPrice-t.startPrice)/t.startPrice*100);
+  const eq=buildEquityCurve(assetId,t.startedAt);
+  const tradingPct=eq.openingBalance>0?((eq.pnl/eq.openingBalance)*100):0;
+  return{tradingPct,bmPct,beat:tradingPct>bmPct,tradeCount:eq.tradeCount,eq};
+}
+
+// When a comparison ends — whether it reached its own timeline end or was
+// stopped manually — it's permanently archived into Comparison History
+// before being removed from the live tracking list.
 function stopBenchmarkTracking(assetId){
+  const t=benchmarkTracking[assetId];
+  if(t){
+    const a=ALL.find(x=>x.id===assetId);
+    const result=computeBenchmarkResult(assetId);
+    const completedNaturally=!!(t.endAt&&Date.now()>=t.endAt);
+    if(result){
+      comparisonHistory.unshift({
+        id:Date.now()+Math.random(),
+        assetId,assetName:a.name,flag:a.flag,
+        startedAt:t.startedAt,
+        endedAt:Date.now(),
+        timelineMode:t.timelineMode||'open',
+        plannedEndAt:t.endAt||null,
+        endReason:completedNaturally?'completed':'stopped',
+        tradingPct:result.tradingPct,
+        bmPct:result.bmPct,
+        beat:result.beat,
+        tradeCount:result.tradeCount
+      });
+      save('comparisonHistory',comparisonHistory);
+    }
+  }
   delete benchmarkTracking[assetId];
   save('benchmarkTracking',benchmarkTracking);
   renderBenchmarkSection();
+  renderComparisonHistoryLog();
   if(currentPage==='detail')renderDetail(currentDetailAsset);
 }
 
@@ -1599,15 +1747,11 @@ function benchmarkCardHTML(assetId,withStopButton){
   const t=benchmarkTracking[assetId];
   if(!t)return'';
   const a=ALL.find(x=>x.id===assetId);
-  const p=prices[assetId];
   const isComplete=t.endAt&&Date.now()>=t.endAt;
-  const currentPrice=p?.current??t.startPrice;
-  const bmPct=((currentPrice-t.startPrice)/t.startPrice*100);
-  const eq=buildEquityCurve(assetId,t.startedAt);
-  const tradingPct=eq.openingBalance>0?((eq.pnl/eq.openingBalance)*100):0;
+  const result=computeBenchmarkResult(assetId);
+  const{tradingPct,bmPct,beat,eq}=result;
   const seriesB=t.priceLog.map(pt=>(pt.price/t.startPrice)*100);
   const seriesA=eq.curve.map(pt=>(pt.value/eq.openingBalance)*100);
-  const beat=tradingPct>bmPct;
   const fmtDT=ts=>new Date(ts).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
   const startedLabel=fmtDT(t.startedAt);
   let timelineLabel;
@@ -1977,7 +2121,7 @@ function calcPerf(){
 function exportData(){
   const bundle={
     exportedAt:new Date().toISOString(),
-    balances,trades,history,blockState,cycleLog,manualPrices,benchmarkTracking,frictionEnabled
+    balances,trades,history,blockState,cycleLog,manualPrices,benchmarkTracking,frictionEnabled,comparisonHistory
   };
   const blob=new Blob([JSON.stringify(bundle,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
@@ -2009,9 +2153,11 @@ function importData(event){
       manualPrices=data.manualPrices||{};
       benchmarkTracking=data.benchmarkTracking||{};
       frictionEnabled=data.frictionEnabled||false;
+      comparisonHistory=data.comparisonHistory||[];
       save('balances',balances);save('trades',trades);save('history',history);
       save('blockState',blockState);save('cycleLog',cycleLog);save('manualPrices',manualPrices);
       save('benchmarkTracking',benchmarkTracking);save('frictionEnabled',frictionEnabled);
+      save('comparisonHistory',comparisonHistory);
       showToast('Backup imported successfully');
       showPage('home',false);
     }catch(err){
@@ -2025,9 +2171,10 @@ function importData(event){
 // ── Reset ─────────────────────────────────────────────────────────────────────
 function resetConfirm(){
   if(confirm('Reset all balances and trade history? This cannot be undone.')){
-    balances=initBalances();trades=[];history=[];blockState={};cycleLog=[];benchmarkTracking={};
+    balances=initBalances();trades=[];history=[];blockState={};cycleLog=[];benchmarkTracking={};comparisonHistory=[];
     save('balances',balances);save('trades',trades);save('history',history);
     save('blockState',blockState);save('cycleLog',cycleLog);save('benchmarkTracking',benchmarkTracking);
+    save('comparisonHistory',comparisonHistory);
     showToast('Platform reset — all balances restored to $1,000,000');
     pageStack=['home'];
     showPage('home',false);
