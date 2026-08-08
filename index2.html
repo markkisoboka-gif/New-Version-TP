@@ -1,0 +1,2049 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes"/>
+  <meta name="theme-color" content="#000000"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <title>TradePrediction</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+    body{font-family:'Inter','Helvetica Neue',Arial,sans-serif;background:#fff;max-width:430px;margin:0 auto;min-height:100vh;}
+    button{font-family:inherit;}
+    .clock{background:#000;color:#fff;padding:10px 16px;text-align:center;font-size:11px;letter-spacing:.3px;}
+    .pricebar{background:#111;color:#888;padding:3px 16px;text-align:center;font-size:10px;}
+    .back-btn{display:flex;align-items:center;gap:5px;background:none;border:none;font-size:15px;font-weight:700;color:#111;padding:12px 16px;border-bottom:1px solid #f3f4f6;width:100%;text-align:left;cursor:pointer;}
+    .bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:#fff;border-top:1px solid #e5e7eb;display:flex;z-index:100;}
+    .nav-btn{flex:1;background:none;border:none;padding:10px 0 8px;display:flex;flex-direction:column;align-items:center;gap:2px;position:relative;cursor:pointer;}
+    .nav-icon{font-size:20px;}
+    .nav-label{font-size:10px;color:#9ca3af;}
+    .nav-label.active{color:#000;font-weight:700;}
+    .toast{position:fixed;top:12px;left:50%;transform:translateX(-50%);background:#111;color:#fff;border-radius:8px;padding:10px 16px;font-size:13px;z-index:999;max-width:380px;text-align:center;display:none;box-shadow:0 4px 20px rgba(0,0,0,.3);}
+    .page{display:none;padding:16px;padding-bottom:80px;}
+    .page.active{display:block;}
+    .slabel{font-size:11px;font-weight:700;color:#6b7280;letter-spacing:1px;text-transform:uppercase;margin:12px 0 6px;display:block;}
+    .primary-btn{width:100%;padding:16px 0;background:#000;color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;margin-top:8px;}
+    .primary-btn:disabled{background:#e5e7eb;color:#9ca3af;cursor:not-allowed;}
+    .dir-btn{flex:1;padding:16px 0;border:2px solid #e5e7eb;border-radius:10px;font-size:18px;font-weight:800;background:#fff;cursor:pointer;}
+    .dir-btn.up{color:#16a34a;}
+    .dir-btn.up.sel{border-color:#16a34a;background:#f0fdf4;}
+    .dir-btn.down{color:#dc2626;}
+    .dir-btn.down.sel{border-color:#dc2626;background:#fef2f2;}
+    .stepper{display:flex;align-items:center;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;}
+    .stepper-btn{background:#f9fafb;border:none;padding:14px 18px;font-size:22px;font-weight:700;color:#374151;cursor:pointer;}
+    .stepper-val{flex:1;text-align:center;font-size:17px;font-weight:700;}
+    .quick-btns{display:flex;gap:5px;margin-top:8px;flex-wrap:wrap;}
+    .qbtn{flex:1;background:#f3f4f6;border:none;border-radius:6px;padding:7px 2px;font-size:11px;font-weight:600;cursor:pointer;min-width:40px;}
+    .trade-ticket{border-radius:12px;padding:14px;margin-bottom:10px;}
+    .win-ticket{background:#f0fdf4;border:1px solid #bbf7d0;}
+    .loss-ticket{background:#fef2f2;border:1px solid #fecaca;}
+    .neutral-ticket{background:#f9fafb;border:1px solid #e5e7eb;}
+  </style>
+</head>
+<body>
+
+<div class="clock" id="clock"></div>
+<div class="pricebar" id="price-status">Loading live prices...</div>
+<div id="back-bar" style="display:none">
+  <button class="back-btn" id="back-btn">&#8249; <span id="back-label">Home</span></button>
+</div>
+
+<!-- HOME PAGE -->
+<div class="page" id="page-home">
+  <p style="font-size:12px;font-weight:600;color:#6b7280;margin:0 0 4px;letter-spacing:1px;text-transform:uppercase">Total Portfolio</p>
+  <div style="font-size:34px;font-weight:800;letter-spacing:-1px;margin:0 0 2px" id="home-total"></div>
+  <div style="font-size:13px;font-weight:600;margin-bottom:4px" id="home-pnl"></div>
+  <div style="font-size:12px;color:#9ca3af;margin-bottom:16px" id="home-positions"></div>
+  <span class="slabel">Indices</span>
+  <div id="home-indices"></div>
+  <span class="slabel" style="margin-top:16px">Commodities</span>
+  <div id="home-commodities"></div>
+  <div style="margin-top:24px;padding-top:16px;border-top:1px solid #f3f4f6;text-align:center">
+    <div style="display:flex;gap:8px;justify-content:center;margin-bottom:10px">
+      <button onclick="exportData()" style="background:none;border:1px solid #e5e7eb;border-radius:8px;padding:8px 16px;font-size:12px;color:#374151;cursor:pointer">⬇️ Export Data</button>
+      <button onclick="document.getElementById('import-file-input').click()" style="background:none;border:1px solid #e5e7eb;border-radius:8px;padding:8px 16px;font-size:12px;color:#374151;cursor:pointer">⬆️ Import Data</button>
+    </div>
+    <input type="file" id="import-file-input" accept="application/json" style="display:none" onchange="importData(event)">
+    <button onclick="resetConfirm()" style="background:none;border:1px solid #e5e7eb;border-radius:8px;padding:8px 20px;font-size:12px;color:#9ca3af;cursor:pointer">Reset Platform</button>
+  </div>
+</div>
+
+<!-- CYCLES PAGE -->
+<div class="page" id="page-cycles">
+  <h2 style="font-size:18px;font-weight:800;margin:0 0 4px">Cycles</h2>
+  <p style="font-size:12px;color:#6b7280;margin:0 0 16px">Current block & unbroken cycle streak per asset — tap an asset for details</p>
+  <span class="slabel">Indices</span>
+  <div id="cycles-indices"></div>
+  <span class="slabel" style="margin-top:16px">Commodities</span>
+  <div id="cycles-commodities"></div>
+</div>
+
+<!-- ASSET DETAIL PAGE -->
+<div class="page" id="page-detail">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+    <span style="font-size:32px" id="d-flag"></span>
+    <div>
+      <h2 style="font-size:20px;font-weight:800;margin:0" id="d-name"></h2>
+      <div style="font-size:12px;color:#6b7280" id="d-meta"></div>
+    </div>
+  </div>
+  <div style="background:#f9fafb;border-radius:12px;padding:14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
+    <div>
+      <div style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">Balance</div>
+      <div style="font-size:22px;font-weight:800" id="d-balance"></div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">P&L</div>
+      <div style="font-size:16px;font-weight:700" id="d-pnl"></div>
+    </div>
+  </div>
+  <div style="background:#f9fafb;border-radius:12px;padding:14px;margin-bottom:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div>
+        <div style="font-size:28px;font-weight:800" id="d-price"></div>
+        <div style="font-size:13px;font-weight:600" id="d-change"></div>
+      </div>
+      <div style="font-size:11px;color:#9ca3af">5-Day Chart</div>
+    </div>
+    <div id="d-chart"></div>
+  </div>
+  <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:14px;margin-bottom:12px">
+    <div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Volatility & Stats (5-Day)</div>
+    <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
+      <div style="flex:1;min-width:100px">
+        <div style="font-size:10px;color:#9ca3af;margin-bottom:2px">Volatility (drives odds)</div>
+        <div style="font-size:16px;font-weight:800" id="d-volatility"></div>
+      </div>
+      <div style="flex:1;min-width:100px">
+        <div style="font-size:10px;color:#9ca3af;margin-bottom:2px">Std. Deviation</div>
+        <div style="font-size:16px;font-weight:800" id="d-stddev"></div>
+      </div>
+    </div>
+  </div>
+  <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:14px;margin-bottom:12px">
+    <div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Drawdown Counter</div>
+    <div id="d-drawdown"></div>
+  </div>
+  <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:14px;margin-bottom:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.5px">Slippage & Friction</div>
+      <label style="position:relative;display:inline-block;width:40px;height:22px;cursor:pointer">
+        <input type="checkbox" id="friction-toggle" onchange="toggleFriction()" style="opacity:0;width:0;height:0">
+        <span id="friction-toggle-track" style="position:absolute;inset:0;background:#e5e7eb;border-radius:22px;transition:.2s"></span>
+        <span id="friction-toggle-knob" style="position:absolute;height:16px;width:16px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 2px rgba(0,0,0,.2)"></span>
+      </label>
+    </div>
+    <div id="friction-status" style="font-size:11px;color:#9ca3af"></div>
+  </div>
+  <div id="d-benchmark"></div>
+  <div id="d-tenday" style="display:none"></div>
+  <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:14px;margin-bottom:12px">
+    <div style="font-size:12px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Manual Closing Price Override</div>
+    <div id="d-override-status" style="font-size:12px;color:#6b7280;margin-bottom:8px">No override set — next trade will use the live price above.</div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <input type="text" inputmode="decimal" id="d-override-input" placeholder="Enter real closing price" style="flex:1;padding:10px 12px;border:1px solid #fde68a;border-radius:8px;font-size:15px;outline:none;background:#fff;">
+      <button onclick="setManualPrice()" style="background:#92400e;color:#fff;border:none;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">Set Price</button>
+    </div>
+    <button id="d-override-clear" onclick="clearManualPrice()" style="display:none;width:100%;margin-top:8px;background:none;border:1px solid #fde68a;border-radius:8px;padding:8px;font-size:12px;color:#92400e;cursor:pointer">Clear override — go back to live price</button>
+  </div>
+  <button class="primary-btn" id="d-trade-btn">Trade</button>
+</div>
+
+<!-- TRADE FORM PAGE -->
+<div class="page" id="page-trade-form">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+    <span style="font-size:28px" id="tf-flag"></span>
+    <div>
+      <h2 style="font-size:18px;font-weight:800;margin:0" id="tf-name"></h2>
+      <div style="font-size:12px;color:#6b7280" id="tf-meta"></div>
+    </div>
+  </div>
+  <div style="background:#f9fafb;border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;justify-content:space-between">
+    <span style="font-size:12px;color:#6b7280">Available Balance</span>
+    <span style="font-size:13px;font-weight:700" id="tf-balance"></span>
+  </div>
+  <div style="background:#f9fafb;border-radius:12px;padding:14px;margin-bottom:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div>
+        <div style="font-size:26px;font-weight:800" id="tf-price"></div>
+        <div style="font-size:13px;font-weight:600" id="tf-change"></div>
+      </div>
+      <div style="font-size:11px;color:#9ca3af">Current Price</div>
+    </div>
+  </div>
+  <div style="margin-bottom:14px">
+    <label style="font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:8px">Your Prediction</label>
+    <div style="display:flex;gap:10px">
+      <button id="btn-up" class="dir-btn up" onclick="setDir('UP')">▲ UP<div id="odds-up" style="font-size:11px;font-weight:600;margin-top:4px;color:#6b7280">—</div></button>
+      <button id="btn-down" class="dir-btn down" onclick="setDir('DOWN')">▼ DOWN<div id="odds-down" style="font-size:11px;font-weight:600;margin-top:4px;color:#6b7280">—</div></button>
+    </div>
+    <div style="font-size:10px;color:#9ca3af;text-align:center;margin-top:6px">Odds reflect current market volatility · refreshed each visit</div>
+  </div>
+  <div style="margin-bottom:14px">
+    <label style="font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px" id="tf-unit-label">Units</label>
+    <div class="stepper">
+      <button class="stepper-btn" onclick="changeUnits(-1)">−</button>
+      <div class="stepper-val" id="units-display">1</div>
+      <button class="stepper-btn" onclick="changeUnits(1)">+</button>
+    </div>
+    <div class="quick-btns" id="units-quick-btns">
+      <button class="qbtn" onclick="setUnits(0.01)">0.01</button>
+      <button class="qbtn" onclick="setUnits(0.1)">0.1</button>
+      <button class="qbtn" onclick="setUnits(0.5)">0.5</button>
+      <button class="qbtn" onclick="setUnits(1)">1</button>
+      <button class="qbtn" onclick="setUnits(5)">5</button>
+      <button class="qbtn" onclick="setUnits(10)">10</button>
+    </div>
+  </div>
+  <div style="margin-bottom:4px">
+    <label style="font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">Stake (USD)</label>
+    <div class="stepper">
+      <button class="stepper-btn" onclick="changeStake(-1000)">−</button>
+      <div class="stepper-val" id="stake-display">$0</div>
+      <button class="stepper-btn" onclick="changeStake(1000)">+</button>
+    </div>
+    <div class="quick-btns">
+      <button class="qbtn" onclick="setStake(1000)">$1K</button>
+      <button class="qbtn" onclick="setStake(5000)">$5K</button>
+      <button class="qbtn" onclick="setStake(10000)">$10K</button>
+      <button class="qbtn" onclick="setStake(50000)">$50K</button>
+      <button class="qbtn" onclick="setStake(100000)">$100K</button>
+      <button class="qbtn" onclick="setStake(500000)">$500K</button>
+    </div>
+  </div>
+  <div style="margin-bottom:4px">
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:#6b7280;margin-top:10px;padding:10px;background:#f9fafb;border-radius:8px;">
+      <span>Cost: <strong id="tf-cost">$0.00</strong></span>
+      <span>Balance after: <strong id="tf-after"></strong></span>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <div style="flex:1;padding:10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;text-align:center;">
+        <div style="font-size:10px;color:#6b7280;text-transform:uppercase;margin-bottom:2px">If UP &amp; correct</div>
+        <strong id="tf-win-up" style="font-size:15px;color:#16a34a;">+$0.00</strong>
+      </div>
+      <div style="flex:1;padding:10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;text-align:center;">
+        <div style="font-size:10px;color:#6b7280;text-transform:uppercase;margin-bottom:2px">If DOWN &amp; correct</div>
+        <strong id="tf-win-down" style="font-size:15px;color:#16a34a;">+$0.00</strong>
+      </div>
+    </div>
+    <div style="margin-top:8px;padding:10px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;text-align:center;">
+      <span style="font-size:12px;color:#6b7280;" id="tf-loss-label">If your prediction is wrong: </span>
+      <strong id="tf-loss" style="font-size:14px;color:#dc2626;">-$0.00</strong>
+    </div>
+  </div>
+  <div style="font-size:11px;color:#9ca3af;margin-bottom:12px" id="tf-max"></div>
+  <button class="primary-btn" id="tf-submit" onclick="submitTrade()" disabled>Complete all fields</button>
+</div>
+
+<!-- TRADE TICKET PAGE -->
+<div class="page" id="page-ticket">
+  <h2 style="font-size:18px;font-weight:800;margin:0 0 16px">Trade Confirmation</h2>
+  <div id="ticket-content"></div>
+</div>
+
+<!-- POSITIONS PAGE -->
+<div class="page" id="page-positions">
+  <h2 style="font-size:18px;font-weight:800;margin:0 0 4px">Open Positions</h2>
+  <p style="font-size:12px;color:#6b7280;margin:0 0 16px" id="pos-count"></p>
+  <div id="pos-list"></div>
+</div>
+
+<!-- P&L PAGE -->
+<div class="page" id="page-history">
+  <h2 style="font-size:18px;font-weight:800;margin:0 0 16px">P&L</h2>
+  <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:14px;margin-bottom:16px">
+    <div style="font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Calculate Performance</div>
+    <div style="margin-bottom:10px">
+      <label style="font-size:11px;color:#6b7280;display:block;margin-bottom:4px">Asset</label>
+      <select id="perf-asset" onchange="perfResult=null;renderPerfResult()" style="width:100%;padding:8px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;background:#fff;"></select>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <div style="flex:1"><label style="font-size:11px;color:#6b7280;display:block;margin-bottom:4px">From</label>
+      <input type="date" id="perf-from" style="width:100%;padding:8px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;"/></div>
+      <div style="flex:1"><label style="font-size:11px;color:#6b7280;display:block;margin-bottom:4px">To</label>
+      <input type="date" id="perf-to" style="width:100%;padding:8px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;"/></div>
+    </div>
+    <button onclick="calcPerf()" style="width:100%;padding:10px 0;background:#000;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">Calculate</button>
+    <div id="perf-result"></div>
+  </div>
+
+  <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:14px;margin-bottom:16px">
+    <div style="font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Benchmark Comparison</div>
+    <div style="font-size:11px;color:#9ca3af;margin-bottom:10px">Tracks forward from the moment you start it — your trading return vs. simply buying &amp; holding the real asset. Also shown live on each tracked asset's own page.</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px" id="bm-asset-chips"></div>
+
+    <div style="font-size:11px;color:#6b7280;margin-bottom:4px">Timeline</div>
+    <div style="display:flex;gap:6px;margin-bottom:8px">
+      <button type="button" onclick="setBmTimelineMode('open')" id="bm-mode-open" style="flex:1;padding:7px 4px;border-radius:8px;border:1px solid #e5e7eb;background:#000;color:#fff;font-size:11px;cursor:pointer">Open-ended</button>
+      <button type="button" onclick="setBmTimelineMode('enddate')" id="bm-mode-enddate" style="flex:1;padding:7px 4px;border-radius:8px;border:1px solid #e5e7eb;background:#fff;color:#000;font-size:11px;cursor:pointer">End date</button>
+      <button type="button" onclick="setBmTimelineMode('duration')" id="bm-mode-duration" style="flex:1;padding:7px 4px;border-radius:8px;border:1px solid #e5e7eb;background:#fff;color:#000;font-size:11px;cursor:pointer">Duration</button>
+    </div>
+    <div id="bm-enddate-input" style="display:none;margin-bottom:10px">
+      <label style="font-size:11px;color:#6b7280;display:block;margin-bottom:4px">Ends on</label>
+      <input type="datetime-local" id="bm-end-datetime" style="width:100%;padding:8px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;">
+    </div>
+    <div id="bm-duration-input" style="display:none;margin-bottom:10px">
+      <div style="display:flex;gap:6px">
+        <button type="button" onclick="setBmDuration(1)" id="bm-dur-1" style="flex:1;padding:7px 0;border-radius:8px;border:1px solid #e5e7eb;background:#fff;font-size:11px;cursor:pointer">1 Day</button>
+        <button type="button" onclick="setBmDuration(3)" id="bm-dur-3" style="flex:1;padding:7px 0;border-radius:8px;border:1px solid #e5e7eb;background:#000;color:#fff;font-size:11px;cursor:pointer">3 Days</button>
+        <button type="button" onclick="setBmDuration(7)" id="bm-dur-7" style="flex:1;padding:7px 0;border-radius:8px;border:1px solid #e5e7eb;background:#fff;font-size:11px;cursor:pointer">7 Days</button>
+        <button type="button" onclick="setBmDuration(30)" id="bm-dur-30" style="flex:1;padding:7px 0;border-radius:8px;border:1px solid #e5e7eb;background:#fff;font-size:11px;cursor:pointer">30 Days</button>
+      </div>
+    </div>
+
+    <button onclick="startBenchmarkTracking()" id="bm-compare-btn" style="width:100%;padding:10px 0;background:#000;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">Start Comparison</button>
+    <div id="bm-results" style="margin-top:12px"></div>
+  </div>
+  <button onclick="toggleTradeHistory()" style="display:flex;justify-content:space-between;align-items:center;width:100%;background:none;border:none;cursor:pointer;padding:0;margin-bottom:8px">
+    <span style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:1px" id="trade-history-toggle-label">Trade History</span>
+    <span style="font-size:12px;color:#9ca3af" id="trade-history-toggle-arrow">Show ▾</span>
+  </button>
+  <div id="history-list" style="display:none"></div>
+
+  <button onclick="toggleEarlyClosures()" style="display:flex;justify-content:space-between;align-items:center;width:100%;background:none;border:none;cursor:pointer;padding:0;margin:20px 0 8px">
+    <span style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:1px" id="early-closures-toggle-label">Early Closures</span>
+    <span style="font-size:12px;color:#9ca3af" id="early-closures-toggle-arrow">Show ▾</span>
+  </button>
+  <div id="early-closures-filters" style="display:none;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+    <select id="ec-filter-asset" onchange="renderEarlyClosures()" style="flex:1;min-width:120px;padding:8px;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;background:#fff">
+      <option value="">All Assets</option>
+    </select>
+    <input type="date" id="ec-filter-from" onchange="renderEarlyClosures()" style="flex:1;min-width:120px;padding:8px;border:1px solid #e5e7eb;border-radius:8px;font-size:12px">
+    <input type="date" id="ec-filter-to" onchange="renderEarlyClosures()" style="flex:1;min-width:120px;padding:8px;border:1px solid #e5e7eb;border-radius:8px;font-size:12px">
+    <button onclick="clearEarlyClosuresFilter()" style="padding:8px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;background:#f9fafb;cursor:pointer">Clear</button>
+  </div>
+  <div id="early-closures-summary" style="display:none;font-size:11px;color:#9ca3af;margin-bottom:8px"></div>
+  <div id="early-closures-list" style="display:none"></div>
+
+  <div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:1px;margin:20px 0 8px">Block Cycle Log</div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+    <select id="cycle-filter-asset" onchange="renderCycleLog()" style="flex:1;min-width:120px;padding:8px;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;background:#fff">
+      <option value="">All Assets</option>
+    </select>
+    <input type="date" id="cycle-filter-from" onchange="renderCycleLog()" style="flex:1;min-width:120px;padding:8px;border:1px solid #e5e7eb;border-radius:8px;font-size:12px">
+    <input type="date" id="cycle-filter-to" onchange="renderCycleLog()" style="flex:1;min-width:120px;padding:8px;border:1px solid #e5e7eb;border-radius:8px;font-size:12px">
+    <button onclick="clearCycleFilter()" style="padding:8px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;background:#f9fafb;cursor:pointer">Clear</button>
+  </div>
+  <div id="cycle-log-summary" style="font-size:11px;color:#9ca3af;margin-bottom:8px"></div>
+  <div id="cycle-log-list"></div>
+
+  <button onclick="toggleDrawdownLog()" style="display:flex;justify-content:space-between;align-items:center;width:100%;background:none;border:none;cursor:pointer;padding:0;margin:20px 0 8px">
+    <span style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:1px" id="drawdown-log-toggle-label">Drawdown History</span>
+    <span style="font-size:12px;color:#9ca3af" id="drawdown-log-toggle-arrow">Show ▾</span>
+  </button>
+  <div id="drawdown-log-filters" style="display:none;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+    <select id="dd-filter-asset" onchange="renderDrawdownLog()" style="flex:1;min-width:120px;padding:8px;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;background:#fff">
+      <option value="">All Assets</option>
+    </select>
+    <input type="date" id="dd-filter-from" onchange="renderDrawdownLog()" style="flex:1;min-width:120px;padding:8px;border:1px solid #e5e7eb;border-radius:8px;font-size:12px">
+    <input type="date" id="dd-filter-to" onchange="renderDrawdownLog()" style="flex:1;min-width:120px;padding:8px;border:1px solid #e5e7eb;border-radius:8px;font-size:12px">
+    <button onclick="clearDrawdownFilter()" style="padding:8px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;background:#f9fafb;cursor:pointer">Clear</button>
+  </div>
+  <div id="drawdown-log-summary" style="display:none;font-size:11px;color:#9ca3af;margin-bottom:8px"></div>
+  <div id="drawdown-log-list" style="display:none"></div>
+</div>
+
+<div class="bottom-nav">
+  <button class="nav-btn" onclick="showPage('home')"><span class="nav-icon">⊞</span><span class="nav-label" id="nl-home">Home</span></button>
+  <button class="nav-btn" onclick="showPage('cycles')"><span class="nav-icon">🔁</span><span class="nav-label" id="nl-cycles">Cycles</span></button>
+  <button class="nav-btn" onclick="showPage('positions')" style="position:relative"><span class="nav-icon">📂</span><span class="nav-label" id="nl-positions">Open</span><span id="trade-badge" style="display:none;position:absolute;top:6px;right:20%;background:#dc2626;color:#fff;border-radius:10px;font-size:9px;padding:1px 5px;font-weight:700"></span></button>
+  <button class="nav-btn" onclick="showPage('history')"><span class="nav-icon">📊</span><span class="nav-label" id="nl-history">P&L</span></button>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Assets ────────────────────────────────────────────────────────────────────
+const INDICES=[
+  {id:"FTSE",name:"FTSE 100",unit:"Units",close:"16:30",closeHour:16,closeMin:30,tz:"Europe/London",flag:"🇬🇧"},
+  {id:"DAX", name:"DAX 40",  unit:"Units",close:"17:30",closeHour:17,closeMin:30,tz:"Europe/Berlin",flag:"🇩🇪"},
+  {id:"CAC", name:"CAC 40",  unit:"Units",close:"17:30",closeHour:17,closeMin:30,tz:"Europe/Paris",flag:"🇫🇷"},
+  {id:"SPX", name:"S&P 500", unit:"Units",close:"16:00",closeHour:16,closeMin:0,tz:"America/New_York",flag:"🇺🇸"},
+  {id:"ASX", name:"ASX 200", unit:"Units",close:"16:00",closeHour:16,closeMin:0,tz:"Australia/Sydney",flag:"🇦🇺"},
+  {id:"NKY", name:"Nikkei",  unit:"Units",close:"15:30",closeHour:15,closeMin:30,tz:"Asia/Tokyo",flag:"🇯🇵"},
+];
+// Commodities now run on a single unified weekly schedule (see
+// isCommodityMarketOpen / nextCommodityCloseLondon below) rather than a
+// single daily close time — close/closeHour/closeMin/tz are kept here only
+// as display fallbacks and are not used to compute actual settlement.
+const COMMODITIES=[
+  {id:"GOLD",  name:"Gold",        unit:"Contracts",close:"22:00",closeHour:22,closeMin:0,tz:"Europe/London",flag:"🥇"},
+  {id:"SILVER",name:"Silver",      unit:"Contracts",close:"22:00",closeHour:22,closeMin:0,tz:"Europe/London",flag:"🥈"},
+  {id:"BRENT", name:"Brent Crude", unit:"Contracts",close:"22:00",closeHour:22,closeMin:0,tz:"Europe/London",flag:"🛢️"},
+  {id:"WTI",   name:"WTI Crude",   unit:"Contracts",close:"22:00",closeHour:22,closeMin:0,tz:"Europe/London",flag:"⛽"},
+];
+const ALL=[...INDICES,...COMMODITIES];
+const INITIAL=1000000;
+const BASE={FTSE:8245.5,DAX:18732.2,CAC:7654.3,SPX:5423.8,ASX:7823.4,NKY:38654,GOLD:2341.5,SILVER:29.85,BRENT:82.4,WTI:78.2};
+
+// Yahoo Finance symbols
+const YAHOO={FTSE:'^FTSE',DAX:'^GDAXI',CAC:'^FCHI',SPX:'^GSPC',ASX:'^AXJO',NKY:'^N225',GOLD:'GC=F',SILVER:'SI=F',BRENT:'BZ=F',WTI:'CL=F'};
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let balances={},trades=[],history=[],prices={};
+let blockState={},cycleLog=[];
+let currentPage='home';
+let pageStack=['home'];
+let currentDetailAsset=null;
+let currentTradeAsset=null;
+let tradeDirection=null;
+let tradeUnits=1;
+let tradeStake=0;
+let perfResult=null;
+
+// ── Storage ───────────────────────────────────────────────────────────────────
+function save(k,v){try{localStorage.setItem('tp_'+k,JSON.stringify(v));}catch(e){}}
+function load(k,d){try{const v=localStorage.getItem('tp_'+k);return v?JSON.parse(v):d;}catch(e){return d;}}
+function initBalances(){const b={};ALL.forEach(a=>{b[a.id]=INITIAL;});return b;}
+function loadData(){
+  balances=load('balances',initBalances());
+  trades=load('trades',[]);
+  history=load('history',[]);
+  blockState=load('blockState',{});
+  cycleLog=load('cycleLog',[]);
+  benchmarkTracking=load('benchmarkTracking',{});
+  frictionEnabled=load('frictionEnabled',false);
+}
+
+// ── Block Cycle Tracking ────────────────────────────────────────────────────────
+// Each asset runs its own independent 10-block, 3-trade traversal cycle.
+// A trade is tagged with whichever block is active for that asset when it's
+// placed. Three straight losses inside a block moves that asset on to the
+// next block; any correct prediction resets it straight back to Block 1,
+// logging which block the win landed in. If Block 10 is reached and all 3
+// of its trades also lose, the whole cycle resets back to Block 1 and that
+// full exhaustion is logged separately for the historical footprint. All
+// settlement still goes through the same manual entry/exit protocols.
+function getBlockState(assetId){
+  if(!blockState[assetId])blockState[assetId]={block:1,tradesInBlock:0,breachesSinceWin:0};
+  return blockState[assetId];
+}
+
+function logCycleEvent(assetId,type,fromBlock,toBlock,breaches){
+  const a=ALL.find(x=>x.id===assetId);
+  cycleLog.unshift({
+    id:Date.now()+Math.random(),
+    assetId,assetName:a?.name||assetId,
+    type, // 'WIN' | 'BLOCK_ADVANCE' | 'FULL_CYCLE_EXHAUSTED'
+    fromBlock,toBlock,
+    breachesSinceWin:breaches,
+    at:Date.now()
+  });
+  save('cycleLog',cycleLog);
+}
+
+// Call once a trade has settled (won = true/false). Mutates and persists
+// blockState + cycleLog.
+function advanceCycle(assetId,won){
+  const bs=getBlockState(assetId);
+  if(won){
+    logCycleEvent(assetId,'WIN',bs.block,1,bs.breachesSinceWin);
+    bs.block=1;bs.tradesInBlock=0;bs.breachesSinceWin=0;
+  } else {
+    bs.tradesInBlock++;
+    if(bs.tradesInBlock>=3){
+      bs.tradesInBlock=0;
+      if(bs.block>=10){
+        logCycleEvent(assetId,'FULL_CYCLE_EXHAUSTED',10,1,bs.breachesSinceWin+1);
+        bs.block=1;bs.breachesSinceWin=0;
+      } else {
+        const prevBlock=bs.block;
+        bs.block++;
+        bs.breachesSinceWin++;
+        logCycleEvent(assetId,'BLOCK_ADVANCE',prevBlock,bs.block,bs.breachesSinceWin);
+      }
+    }
+  }
+  save('blockState',blockState);
+}
+
+// ── Price fetching ─────────────────────────────────────────────────────────────
+function genHistory(base){
+  const h=[];let price=base*(0.97+Math.random()*0.06);
+  const today=new Date();
+  for(let i=9;i>=0;i--){
+    const change=(Math.random()-0.48)*base*0.012;
+    price=Math.max(price+change,base*0.85);
+    const d=new Date(today);d.setDate(today.getDate()-i);
+    if(d.getDay()===0)d.setDate(d.getDate()-2);
+    if(d.getDay()===6)d.setDate(d.getDate()-1);
+    h.push({price:parseFloat(price.toFixed(2)),date:d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})});
+  }
+  return h;
+}
+
+async function fetchPrice(assetId){
+  const symbol=encodeURIComponent(YAHOO[assetId]);
+  const url=`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=14d`;
+  const proxy=`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+  try{
+    const res=await fetch(proxy);
+    const data=await res.json();
+    const parsed=JSON.parse(data.contents);
+    const result=parsed?.chart?.result?.[0];
+    if(!result)return null;
+    const closes=result.indicators?.quote?.[0]?.close??[];
+    const timestamps=result.timestamp??[];
+    const valid=closes.map((c,i)=>({price:c,ts:timestamps[i]})).filter(x=>x.price!=null);
+    if(!valid.length)return null;
+    const current=valid[valid.length-1].price;
+    const history=valid.slice(-10).map(x=>({
+      price:parseFloat(x.price.toFixed(2)),
+      date:new Date(x.ts*1000).toLocaleDateString('en-GB',{day:'2-digit',month:'short'})
+    }));
+    const prev=valid[valid.length-2]?.price??current;
+    const change=parseFloat((((current-prev)/prev)*100).toFixed(2));
+    return{current:parseFloat(current.toFixed(2)),history,change};
+  }catch(e){return null;}
+}
+
+async function fetchAllPrices(){
+  const el=document.getElementById('price-status');
+  if(el)el.textContent='Updating prices...';
+  const results=await Promise.all(ALL.map(a=>fetchPrice(a.id)));
+  let updated=0;
+  ALL.forEach((a,i)=>{
+    if(results[i]){prices[a.id]=results[i];updated++;}
+  });
+  if(el)el.textContent=updated===ALL.length?'Live prices ✓':`Live prices (${updated}/${ALL.length}) ✓`;
+  logBenchmarkPricePoints();
+  if(currentPage==='home')renderHome();
+  else if(currentPage==='cycles')renderCycles();
+  else if(currentPage==='detail')renderDetail(currentDetailAsset);
+  else if(currentPage==='history')renderBenchmarkSection();
+}
+
+function initPrices(){
+  ALL.forEach(a=>{
+    const base=BASE[a.id];
+    prices[a.id]={current:parseFloat((base*(0.998+Math.random()*0.004)).toFixed(2)),history:genHistory(base),change:parseFloat(((Math.random()-0.48)*1.2).toFixed(2))};
+  });
+  fetchAllPrices();
+}
+
+// ── Commodities weekly schedule (all times Europe/London) ─────────────────────
+// Opens Sunday 23:00, trades continuously through the week with a daily
+// 1-hour maintenance break at 22:00–23:00 (that 22:00 start-of-break is the
+// closing bell used for settlement), and is fully closed from Friday 22:00
+// until Sunday 23:00.
+function isCommodityMarketOpen(from=new Date()){
+  const nowLondon=new Date(from.toLocaleString('en-US',{timeZone:'Europe/London'}));
+  const day=nowLondon.getDay(); // 0=Sun ... 6=Sat
+  const hour=nowLondon.getHours();
+  if(day===6)return false;             // Saturday: closed all day
+  if(day===0)return hour>=23;          // Sunday: opens 23:00
+  if(day===5)return hour<22;           // Friday: closes 22:00 for the week
+  return hour!==22;                    // Mon–Thu: open except the 22:00–23:00 break
+}
+
+function nextCommodityCloseLondon(from=new Date()){
+  const nowLondon=new Date(from.toLocaleString('en-US',{timeZone:'Europe/London'}));
+  const offset=from.getTime()-nowLondon.getTime();
+  for(let i=0;i<9;i++){
+    const cand=new Date(nowLondon);
+    cand.setDate(nowLondon.getDate()+i);
+    cand.setHours(22,0,0,0);
+    const day=cand.getDay();
+    if(day>=1&&day<=5){
+      const realTs=cand.getTime()+offset;
+      if(realTs>from.getTime())return realTs;
+    }
+  }
+  return from.getTime()+86400000; // fallback, should never hit
+}
+
+function nextCommodityOpenLondon(from=new Date()){
+  let t=from.getTime();
+  for(let i=0;i<1152;i++){ // step in 5-min increments, up to 4 days
+    t+=300000;
+    if(isCommodityMarketOpen(new Date(t)))return t;
+  }
+  return t;
+}
+
+function commodityStatusLabel(){
+  if(isCommodityMarketOpen())return null;
+  const openTs=nextCommodityOpenLondon();
+  const label=new Date(openTs).toLocaleString('en-GB',{timeZone:'Europe/London',weekday:'long',hour:'2-digit',minute:'2-digit'});
+  return`Commodities market closed — reopens ${label} London time`;
+}
+
+// ── Settlement time helper ─────────────────────────────────────────────────────
+function getSettlementTime(asset){
+  // Commodities follow the unified weekly schedule above.
+  if(asset.unit==='Contracts')return nextCommodityCloseLondon(new Date());
+  // Returns the next settlement timestamp for this asset
+  const now=new Date();
+  const assetNow=new Date(now.toLocaleString('en-US',{timeZone:asset.tz}));
+  const settleDate=new Date(assetNow);
+  settleDate.setHours(asset.closeHour,asset.closeMin,0,0);
+  // If settlement has already passed today, set to tomorrow
+  if(assetNow>settleDate){
+    settleDate.setDate(settleDate.getDate()+1);
+    // Skip weekends
+    if(settleDate.getDay()===6)settleDate.setDate(settleDate.getDate()+2);
+    if(settleDate.getDay()===0)settleDate.setDate(settleDate.getDate()+1);
+  }
+  // Convert back to UTC timestamp
+  const diff=now.getTime()-assetNow.getTime();
+  return settleDate.getTime()+diff;
+}
+
+function getSettlementLabel(asset){
+  if(asset.unit==='Contracts'){
+    const ts=nextCommodityCloseLondon(new Date());
+    const d=new Date(ts);
+    const dayName=d.toLocaleDateString('en-GB',{timeZone:'Europe/London',weekday:'long'});
+    const todayName=new Date().toLocaleDateString('en-GB',{timeZone:'Europe/London',weekday:'long'});
+    return`${dayName===todayName?'Today':dayName} 22:00`;
+  }
+  const now=new Date();
+  const assetNow=new Date(now.toLocaleString('en-US',{timeZone:asset.tz}));
+  const settleDate=new Date(assetNow);
+  settleDate.setHours(asset.closeHour,asset.closeMin,0,0);
+  if(assetNow>settleDate){
+    settleDate.setDate(settleDate.getDate()+1);
+    if(settleDate.getDay()===6)settleDate.setDate(settleDate.getDate()+2);
+    if(settleDate.getDay()===0)settleDate.setDate(settleDate.getDate()+1);
+    return`Tomorrow ${asset.close}`;
+  }
+  return`Today ${asset.close}`;
+}
+
+// ── Formatters ────────────────────────────────────────────────────────────────
+const fmt=n=>n!=null?n.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2}):'—';
+const fmtCcy=n=>'$'+fmt(n);
+const pnlColor=n=>n>=0?'#16a34a':'#dc2626';
+
+// ── Clock ─────────────────────────────────────────────────────────────────────
+function updateClock(){
+  const el=document.getElementById('clock');
+  if(el)el.textContent=new Date().toLocaleString('en-GB',{timeZone:'Europe/London',weekday:'long',year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'})+' GMT/BST';
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg){
+  const t=document.getElementById('toast');
+  if(!t)return;
+  t.textContent=msg;t.style.display='block';
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>{t.style.display='none';},5000);
+}
+
+// ── SVG helpers ───────────────────────────────────────────────────────────────
+function sparkSVG(hist,color){
+  if(!hist?.length)return'';
+  const pp=hist.map(h=>h.price);
+  const min=Math.min(...pp),max=Math.max(...pp),range=max-min||1;
+  const w=80,h=32,pad=4;
+  const pts=pp.map((p,i)=>{const x=pad+(i/(pp.length-1))*(w-2*pad);const y=h-pad-((p-min)/range)*(h-2*pad);return x+','+y;}).join(' ');
+  return`<svg width="${w}" height="${h}"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.8" stroke-linejoin="round"/></svg>`;
+}
+
+function chartSVG(hist){
+  if(!hist?.length)return'';
+  const pp=hist.slice(-5).map(h=>h.price);
+  const min=Math.min(...pp)*0.999,max=Math.max(...pp)*1.001,range=max-min||1;
+  const W=320,H=120,pL=60,pR=12,pT=12,pB=28,iW=W-pL-pR,iH=H-pT-pB;
+  const toX=i=>pL+(i/(pp.length-1))*iW;
+  const toY=p=>pT+iH-((p-min)/range)*iH;
+  const pts=pp.map((p,i)=>toX(i)+','+toY(p)).join(' ');
+  const days=['5d ago','4d ago','3d ago','2d ago','Today'];
+  const isUp=pp[pp.length-1]>=pp[0];
+  const lc=isUp?'#16a34a':'#dc2626';
+  const ticks=[min,(min+max)/2,max];
+  let svg=`<svg width="100%" viewBox="0 0 ${W} ${H}">`;
+  ticks.forEach(v=>{const y=toY(v);svg+=`<line x1="${pL}" y1="${y}" x2="${W-pR}" y2="${y}" stroke="#e5e7eb" stroke-width="1" stroke-dasharray="3,3"/><text x="${pL-4}" y="${y+4}" text-anchor="end" font-size="9" fill="#6b7280">${fmt(v)}</text>`;});
+  svg+=`<polyline points="${pts}" fill="none" stroke="${lc}" stroke-width="2" stroke-linejoin="round"/>`;
+  pp.forEach((p,i)=>{svg+=`<circle cx="${toX(i)}" cy="${toY(p)}" r="3" fill="${lc}"/>`;});
+  days.forEach((d,i)=>{svg+=`<text x="${toX(i)}" y="${H-6}" text-anchor="middle" font-size="9" fill="#6b7280">${d}</text>`;});
+  return svg+'</svg>';
+}
+
+function tenDayHTML(hist){
+  if(!hist?.length)return'';
+  let html=`<div style="background:#f9fafb;border-radius:12px;padding:14px;margin-bottom:16px">
+    <div style="font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">10-Day Price History</div>
+    <div style="display:flex;justify-content:space-between;border-bottom:1px solid #e5e7eb;padding-bottom:6px;margin-bottom:4px">
+      <span style="font-size:11px;font-weight:700;color:#9ca3af;flex:1">Date</span>
+      <span style="font-size:11px;font-weight:700;color:#9ca3af;text-align:right;flex:1">Close/Settlement</span>
+      <span style="font-size:11px;font-weight:700;color:#9ca3af;text-align:right;min-width:80px">Move</span>
+    </div>`;
+  const rev=[...hist].reverse();
+  rev.forEach((entry,i)=>{
+    const prev=rev[i+1];
+    const up=prev?entry.price>=prev.price:null;
+    const diff=prev?entry.price-prev.price:null;
+    html+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:${i<rev.length-1?'1px solid #f3f4f6':'none'}">
+      <span style="font-size:12px;color:${i===0?'#111':'#6b7280'};font-weight:${i===0?700:400};flex:1">${i===0?'Today':entry.date}</span>
+      <span style="font-size:13px;font-weight:${i===0?800:600};text-align:right;flex:1">${fmt(entry.price)}</span>
+      <span style="font-size:12px;font-weight:600;text-align:right;min-width:80px;color:${up===null?'#9ca3af':up?'#16a34a':'#dc2626'}">${up===null?'—':(up?'▲':'▼')+' '+fmt(Math.abs(diff))}</span>
+    </div>`;
+  });
+  return html+'</div>';
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function showPage(pageId,pushStack=true){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  const target=document.getElementById('page-'+pageId);
+  if(target)target.classList.add('active');
+  currentPage=pageId;
+  if(pushStack)pageStack.push(pageId);
+  const navMap={home:'home',cycles:'cycles','trade-form':'home',ticket:'home',positions:'positions',history:'history',detail:'home'};
+  const activeNav=navMap[pageId]||'home';
+  ['home','cycles','positions','history'].forEach(id=>{
+    const el=document.getElementById('nl-'+id);
+    if(el)el.className='nav-label'+(activeNav===id?' active':'');
+  });
+  const backBar=document.getElementById('back-bar');
+  if(pageStack.length>1){
+    backBar.style.display='block';
+    const prev=pageStack[pageStack.length-2];
+    const labels={home:'Home',cycles:'Cycles',detail:'Back',positions:'Open',history:'P&L','trade-form':'Back',ticket:'Open'};
+    document.getElementById('back-label').textContent=labels[prev]||'Back';
+  } else {
+    backBar.style.display='none';
+  }
+  const badge=document.getElementById('trade-badge');
+  if(badge){
+    if(trades.length>0){badge.style.display='block';badge.textContent=trades.length;}
+    else badge.style.display='none';
+  }
+  if(pageId==='home')renderHome();
+  else if(pageId==='cycles')renderCycles();
+  else if(pageId==='positions')renderPositions();
+  else if(pageId==='history')renderHistory();
+}
+
+function goBack(){
+  if(pageStack.length>1){
+    pageStack.pop();
+    const prev=pageStack[pageStack.length-1];
+    showPage(prev,false);
+  }
+}
+
+function goToDetail(assetId){
+  currentDetailAsset=assetId;
+  pageStack.push('detail');
+  showPage('detail',false);
+  renderDetail(assetId);
+}
+
+function goToTradeForm(assetId){
+  currentTradeAsset=assetId;
+  tradeDirection=null;tradeUnits=1;tradeStake=0;
+  pageStack.push('trade-form');
+  showPage('trade-form',false);
+  populateTradeForm(assetId);
+}
+
+// ── Render functions ──────────────────────────────────────────────────────────
+function renderHome(){
+  const total=Object.values(balances).reduce((s,b)=>s+b,0);
+  const el=id=>document.getElementById(id);
+  if(el('home-total'))el('home-total').textContent=fmtCcy(total);
+  if(el('home-pnl'))el('home-pnl').textContent='';
+  if(el('home-positions'))el('home-positions').textContent=trades.length+' open position'+(trades.length!==1?'s':'');
+  if(el('home-indices'))el('home-indices').innerHTML=INDICES.map(a=>assetCardHTML(a)).join('');
+  if(el('home-commodities'))el('home-commodities').innerHTML=COMMODITIES.map(a=>assetCardHTML(a)).join('');
+}
+
+function assetCardHTML(a){
+  const p=prices[a.id];const isUp=(p?.change??0)>=0;
+  return`<button style="display:flex;align-items:center;justify-content:space-between;background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:10px 14px;margin:4px 0;width:100%;text-align:left;cursor:pointer;" onclick="goToDetail('${a.id}')">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="font-size:20px">${a.flag}</span>
+      <div><div style="font-size:13px;font-weight:700">${a.name}</div>
+      <div style="font-size:11px;color:#6b7280">${a.unit}</div></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      ${sparkSVG(p?.history,isUp?'#16a34a':'#dc2626')}
+      <div style="text-align:right"><div style="font-size:13px;font-weight:800">${fmt(p?.current)}</div>
+      <div style="font-size:11px;font-weight:600;color:${isUp?'#16a34a':'#dc2626'}">${isUp?'▲':'▼'} ${Math.abs(p?.change??0)}%</div></div>
+    </div>
+  </button>`;
+}
+
+function renderCycles(){
+  const cycleRow=a=>{
+    const bs=getBlockState(a.id);
+    const lastEvent=cycleLog.find(e=>e.assetId===a.id);
+    const pct=Math.round((bs.block/10)*100);
+    return`<button style="display:block;width:100%;background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:12px 14px;margin:6px 0;text-align:left;cursor:pointer" onclick="goToDetail('${a.id}')">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div style="display:flex;align-items:center;gap:8px"><span style="font-size:18px">${a.flag}</span><span style="font-size:14px;font-weight:700">${a.name}</span></div>
+        <span style="font-size:12px;font-weight:800;color:#111">Block ${bs.block}/10</span>
+      </div>
+      <div style="background:#e5e7eb;border-radius:6px;height:6px;overflow:hidden;margin-bottom:6px">
+        <div style="background:#111;height:100%;width:${pct}%"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:#6b7280">
+        <span>Trades in block: <strong>${bs.tradesInBlock}/3</strong></span>
+        <span>Unbroken cycles since last win: <strong style="color:${bs.breachesSinceWin>0?'#dc2626':'#16a34a'}">${bs.breachesSinceWin}</strong></span>
+      </div>
+      ${lastEvent?`<div style="font-size:10px;color:#9ca3af;margin-top:4px">Last: ${lastEvent.type.replace('_',' ')} · ${new Date(lastEvent.at).toLocaleString('en-GB')}</div>`:''}
+    </button>`;
+  };
+  const ci=document.getElementById('cycles-indices');
+  const cc=document.getElementById('cycles-commodities');
+  if(ci)ci.innerHTML=INDICES.map(cycleRow).join('');
+  if(cc)cc.innerHTML=COMMODITIES.map(cycleRow).join('');
+}
+
+function renderDetail(assetId){
+  const a=ALL.find(x=>x.id===assetId);
+  const p=prices[assetId];const isUp=(p?.change??0)>=0;
+  const pnl=balances[assetId]-INITIAL;
+  const el=id=>document.getElementById(id);
+  const bs=getBlockState(assetId);
+  const isCommodity=a?.unit==='Contracts';
+  const marketClosed=isCommodity&&!isCommodityMarketOpen();
+  if(el('d-flag'))el('d-flag').textContent=a?.flag||'';
+  if(el('d-name'))el('d-name').textContent=a?.name||'';
+  if(el('d-meta'))el('d-meta').textContent=(a?.unit||'')+' · Settles '+getSettlementLabel(a)+' · Block '+bs.block+'/10 ('+bs.tradesInBlock+'/3)'+(marketClosed?' · '+commodityStatusLabel():'');
+  if(el('d-balance'))el('d-balance').textContent=fmtCcy(balances[assetId]);
+  if(el('d-pnl')){el('d-pnl').textContent=(pnl>=0?'+':'')+fmtCcy(pnl);el('d-pnl').style.color=pnlColor(pnl);}
+  if(el('d-price'))el('d-price').textContent=fmt(p?.current);
+  if(el('d-change')){el('d-change').textContent=(isUp?'▲':'▼')+' '+Math.abs(p?.change??0)+'%';el('d-change').style.color=isUp?'#16a34a':'#dc2626';}
+  if(el('d-chart'))el('d-chart').innerHTML=chartSVG(p?.history);
+  if(el('d-volatility'))el('d-volatility').textContent=(calculateVolatility(p?.history)*100).toFixed(2)+'%';
+  if(el('d-stddev'))el('d-stddev').textContent=(calculateStdDev(p?.history)*100).toFixed(2)+'%';
+  if(el('d-drawdown'))el('d-drawdown').innerHTML=drawdownHTML(assetId);
+  renderFrictionToggle();
+  if(el('d-benchmark'))el('d-benchmark').innerHTML=benchmarkCardHTML(assetId,false);
+  if(el('d-tenday'))el('d-tenday').innerHTML=tenDayHTML(p?.history);
+  if(el('d-trade-btn')){
+    el('d-trade-btn').onclick=()=>goToTradeForm(assetId);
+    el('d-trade-btn').textContent='Trade '+a?.name;
+    el('d-trade-btn').disabled=false;
+  }
+  // Manual closing price override status
+  const override=manualPrices[assetId];
+  if(el('d-override-status')){
+    if(override!=null){
+      el('d-override-status').textContent=`Override active: next trade will use ${fmtCcy(override)} as the entry price, not the live price.`;
+      el('d-override-status').style.color='#92400e';
+      el('d-override-status').style.fontWeight='700';
+      if(el('d-override-clear'))el('d-override-clear').style.display='block';
+    } else {
+      el('d-override-status').textContent='No override set — next trade will use the live price above.';
+      el('d-override-status').style.color='#6b7280';
+      el('d-override-status').style.fontWeight='400';
+      if(el('d-override-clear'))el('d-override-clear').style.display='none';
+    }
+  }
+  if(el('d-override-input'))el('d-override-input').value='';
+}
+
+// ── Manual Closing Price Override ──────────────────────────────────────────────
+// Isolated, single-purpose override: only changes the entry price used for the
+// next trade on that asset. Does NOT touch volatility, momentum, the 5-day chart
+// or the 10-day history — those keep running purely off the live feed as before.
+let manualPrices=load('manualPrices',{});
+
+function setManualPrice(){
+  const input=document.getElementById('d-override-input');
+  const val=parseFloat(input?.value);
+  if(isNaN(val)||val<=0){showToast('Enter a valid closing price');return;}
+  manualPrices[currentDetailAsset]=val;
+  save('manualPrices',manualPrices);
+  showToast(`Closing price set: next trade will use ${fmtCcy(val)} as entry`);
+  renderDetail(currentDetailAsset);
+}
+
+function clearManualPrice(){
+  delete manualPrices[currentDetailAsset];
+  save('manualPrices',manualPrices);
+  showToast('Override cleared — back to live price');
+  renderDetail(currentDetailAsset);
+}
+
+// ── Dynamic Odds Generation ────────────────────────────────────────────────────
+let currentOdds={up:1.75,down:1.75}; // profit multiplier per $1 staked
+
+function calculateVolatility(history){
+  if(!history||history.length<2)return 0.01;
+  const prices5=history.slice(-5).map(h=>h.price);
+  const min=Math.min(...prices5),max=Math.max(...prices5);
+  const avg=prices5.reduce((s,p)=>s+p,0)/prices5.length;
+  return avg>0?(max-min)/avg:0.01; // volatility as % range over 5 days
+}
+
+// True statistical standard deviation of the same 5-day price window used
+// above, expressed as a % of the average price so it's on the same scale as
+// the volatility figure. This is NOT what drives the odds — it's shown
+// alongside purely as the more rigorous companion stat.
+function calculateStdDev(history){
+  if(!history||history.length<2)return 0;
+  const prices5=history.slice(-5).map(h=>h.price);
+  const avg=prices5.reduce((s,p)=>s+p,0)/prices5.length;
+  if(avg<=0)return 0;
+  const variance=prices5.reduce((s,p)=>s+Math.pow(p-avg,2),0)/prices5.length;
+  return Math.sqrt(variance)/avg; // std dev as % of average price
+}
+
+// ── Drawdown Counter ─────────────────────────────────────────────────────────
+// Walks that asset's ENTIRE settled trade history in order (INITIAL balance
+// forward), tracking the running peak balance. Every time balance dips below
+// the peak, that's an active drawdown; it "clears" the moment balance climbs
+// back to or above that peak. Reports the current unclosed drawdown (if any)
+// plus how many trades past completed drawdowns took to clear.
+function calculateDrawdownStats(assetId){
+  const assetHistory=historyForAsset(assetId);
+  let balance=INITIAL,peak=INITIAL,inDrawdown=false,tradesSincePeak=0;
+  const clears=[];
+  assetHistory.forEach(t=>{
+    balance+=t.pnl;
+    if(balance>=peak){
+      if(inDrawdown)clears.push(tradesSincePeak);
+      peak=balance;inDrawdown=false;tradesSincePeak=0;
+    } else {
+      inDrawdown=true;tradesSincePeak++;
+    }
+  });
+  const currentDrawdownAmt=peak-balance;
+  const currentDrawdownPct=peak>0?(currentDrawdownAmt/peak*100):0;
+  const avgClear=clears.length?(clears.reduce((s,n)=>s+n,0)/clears.length):null;
+  const maxClear=clears.length?Math.max(...clears):null;
+  return{inDrawdown,tradesSincePeak,currentDrawdownAmt,currentDrawdownPct,peak,balance,avgClear,maxClear,clearedCount:clears.length};
+}
+function historyForAsset(assetId){
+  return history.filter(t=>t.assetId===assetId).sort((a,b)=>a.settledAt-b.settledAt);
+}
+
+function drawdownHTML(assetId){
+  const d=calculateDrawdownStats(assetId);
+  if(!d.inDrawdown){
+    return`<div style="font-size:13px;color:#16a34a;font-weight:700;margin-bottom:6px">✓ At peak balance — no active drawdown</div>
+      <div style="font-size:11px;color:#9ca3af">${d.clearedCount?`Avg. trades to clear a drawdown: <strong>${d.avgClear.toFixed(1)}</strong> (longest: ${d.maxClear})`:'No completed drawdowns yet'}</div>`;
+  }
+  return`<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:6px">
+      <div style="flex:1;min-width:100px">
+        <div style="font-size:10px;color:#9ca3af;margin-bottom:2px">Current Drawdown</div>
+        <div style="font-size:16px;font-weight:800;color:#dc2626">-${fmtCcy(d.currentDrawdownAmt)} (${d.currentDrawdownPct.toFixed(2)}%)</div>
+      </div>
+      <div style="flex:1;min-width:100px">
+        <div style="font-size:10px;color:#9ca3af;margin-bottom:2px">Trades Since Peak</div>
+        <div style="font-size:16px;font-weight:800">${d.tradesSincePeak} <span style="font-size:11px;color:#9ca3af;font-weight:600">(not yet cleared)</span></div>
+      </div>
+    </div>
+    <div style="font-size:11px;color:#9ca3af">${d.clearedCount?`Avg. trades to clear past drawdowns: <strong>${d.avgClear.toFixed(1)}</strong> (longest: ${d.maxClear})`:'No previously completed drawdowns yet'}</div>`;
+}
+
+// ── Drawdown History Log ────────────────────────────────────────────────────
+// A derived (not separately logged) event view — same approach as Trade
+// History and Early Closures — built by replaying each asset's ENTIRE
+// settled trade history. This means past drawdowns already show up
+// retroactively, with no need to have been "live" when they happened.
+// Each completed drawdown becomes one CLEARED event; an unresolved one
+// becomes a single ACTIVE event that keeps updating as more trades settle.
+function buildDrawdownEvents(assetId){
+  const a=ALL.find(x=>x.id===assetId);
+  const assetHistory=historyForAsset(assetId);
+  let balance=INITIAL,peak=INITIAL,inDrawdown=false;
+  let ddStartAt=null,ddTrades=0,ddTrough=INITIAL;
+  const events=[];
+  assetHistory.forEach(t=>{
+    balance+=t.pnl;
+    if(balance>=peak){
+      if(inDrawdown){
+        events.push({
+          assetId,assetName:a.name,flag:a.flag,type:'CLEARED',
+          startedAt:ddStartAt,endedAt:t.settledAt,
+          peakBalance:peak,troughBalance:ddTrough,
+          drawdownAmt:peak-ddTrough,drawdownPct:(peak-ddTrough)/peak*100,
+          tradesToClear:ddTrades
+        });
+      }
+      peak=balance;inDrawdown=false;ddTrades=0;ddStartAt=null;ddTrough=peak;
+    } else {
+      if(!inDrawdown){ddStartAt=t.settledAt;ddTrough=balance;}
+      else ddTrough=Math.min(ddTrough,balance);
+      inDrawdown=true;ddTrades++;
+    }
+  });
+  if(inDrawdown){
+    events.push({
+      assetId,assetName:a.name,flag:a.flag,type:'ACTIVE',
+      startedAt:ddStartAt,endedAt:null,
+      peakBalance:peak,troughBalance:ddTrough,
+      drawdownAmt:peak-ddTrough,drawdownPct:(peak-ddTrough)/peak*100,
+      tradesToClear:ddTrades
+    });
+  }
+  return events;
+}
+
+function allDrawdownEvents(){
+  return ALL.flatMap(a=>buildDrawdownEvents(a.id));
+}
+
+let drawdownLogExpanded=false;
+
+function toggleDrawdownLog(){
+  drawdownLogExpanded=!drawdownLogExpanded;
+  renderDrawdownLog();
+}
+
+function populateDrawdownAssetFilter(){
+  const sel=document.getElementById('dd-filter-asset');
+  if(!sel||sel.options.length>1)return;
+  ALL.forEach(a=>{
+    const opt=document.createElement('option');
+    opt.value=a.id;opt.textContent=a.name;
+    sel.appendChild(opt);
+  });
+}
+
+function clearDrawdownFilter(){
+  const assetSel=document.getElementById('dd-filter-asset');
+  const from=document.getElementById('dd-filter-from');
+  const to=document.getElementById('dd-filter-to');
+  if(assetSel)assetSel.value='';
+  if(from)from.value='';
+  if(to)to.value='';
+  renderDrawdownLog();
+}
+
+function renderDrawdownLog(){
+  const list=document.getElementById('drawdown-log-list');
+  const filtersBox=document.getElementById('drawdown-log-filters');
+  const summary=document.getElementById('drawdown-log-summary');
+  const arrow=document.getElementById('drawdown-log-toggle-arrow');
+  const label=document.getElementById('drawdown-log-toggle-label');
+  if(!list)return;
+
+  const allEvents=allDrawdownEvents();
+  if(label)label.textContent=`Drawdown History (${allEvents.length})`;
+  if(arrow)arrow.textContent=drawdownLogExpanded?'Hide ▴':'Show ▾';
+  if(filtersBox)filtersBox.style.display=drawdownLogExpanded?'flex':'none';
+  if(summary)summary.style.display=drawdownLogExpanded?'block':'none';
+  list.style.display=drawdownLogExpanded?'block':'none';
+  if(!drawdownLogExpanded)return;
+
+  populateDrawdownAssetFilter();
+  const assetFilter=document.getElementById('dd-filter-asset')?.value||'';
+  const fromVal=document.getElementById('dd-filter-from')?.value||'';
+  const toVal=document.getElementById('dd-filter-to')?.value||'';
+  const fromTs=fromVal?new Date(fromVal+'T00:00:00').getTime():null;
+  const toTs=toVal?new Date(toVal+'T23:59:59').getTime():null;
+
+  let entries=allEvents.slice().sort((a,b)=>(b.endedAt||Date.now())-(a.endedAt||Date.now()));
+  if(assetFilter)entries=entries.filter(e=>e.assetId===assetFilter);
+  if(fromTs!=null)entries=entries.filter(e=>(e.endedAt||Date.now())>=fromTs);
+  if(toTs!=null)entries=entries.filter(e=>(e.endedAt||Date.now())<=toTs);
+
+  if(summary)summary.textContent=`Showing ${entries.length} of ${allEvents.length} drawdown${allEvents.length!==1?'s':''}`;
+
+  if(!entries.length){
+    list.innerHTML=`<div style="text-align:center;color:#9ca3af;font-size:14px;padding:24px">${allEvents.length?'No drawdowns match this filter.':'No drawdowns recorded yet.'}</div>`;
+    return;
+  }
+  const fmtDT=ts=>ts?new Date(ts).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'—';
+  list.innerHTML=entries.map(e=>{
+    const isActive=e.type==='ACTIVE';
+    return`<div style="border:1px solid ${isActive?'#fde68a':'#e5e7eb'};border-radius:10px;padding:10px 12px;background:${isActive?'#fffbeb':'#fff'};margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span style="font-size:13px;font-weight:700">${e.flag} ${e.assetName}</span>
+        <span style="font-size:11px;font-weight:800;color:${isActive?'#92400e':'#16a34a'}">${isActive?'⏳ Active — not yet cleared':'✓ Cleared'}</span>
+      </div>
+      <div style="font-size:11px;color:#6b7280;display:flex;gap:10px;flex-wrap:wrap;margin-bottom:2px">
+        <span>Depth: <strong style="color:#dc2626">-${fmtCcy(e.drawdownAmt)} (${e.drawdownPct.toFixed(2)}%)</strong></span>
+        <span>Trades ${isActive?'so far':'to clear'}: <strong>${e.tradesToClear}</strong></span>
+      </div>
+      <div style="font-size:10px;color:#9ca3af">Started ${fmtDT(e.startedAt)}${isActive?'':` · Cleared ${fmtDT(e.endedAt)}`}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── Slippage & Friction ─────────────────────────────────────────────────────
+// A tiny simulated bid/ask spread applied to trade entries and exits when
+// enabled — mimics the small real-world cost of actually transacting rather
+// than trading at a single frictionless mid-price. Always works against the
+// trader on both sides, same as a real spread would.
+function toggleFriction(){
+  frictionEnabled=!frictionEnabled;
+  save('frictionEnabled',frictionEnabled);
+  renderFrictionToggle();
+  showToast(frictionEnabled?'Slippage & friction enabled':'Slippage & friction disabled');
+}
+
+function renderFrictionToggle(){
+  const cb=document.getElementById('friction-toggle');
+  const track=document.getElementById('friction-toggle-track');
+  const knob=document.getElementById('friction-toggle-knob');
+  const status=document.getElementById('friction-status');
+  if(cb)cb.checked=frictionEnabled;
+  if(track)track.style.background=frictionEnabled?'#000':'#e5e7eb';
+  if(knob)knob.style.left=frictionEnabled?'21px':'3px';
+  if(status)status.textContent=frictionEnabled
+    ?`On — simulated ${(FRICTION_PCT*100).toFixed(2)}% spread cost applied to every entry & exit`
+    :'Off — trades execute at the exact quoted price, no simulated cost';
+}
+
+// side: 'entry' | 'exit'. Always nudges the achievable price against the
+// trader, same direction a real bid/ask spread would.
+function applyFriction(price,direction,side){
+  if(!frictionEnabled)return price;
+  const half=FRICTION_PCT/2;
+  if(side==='entry')return direction==='UP'?price*(1+half):price*(1-half);
+  return direction==='UP'?price*(1-half):price*(1+half);
+}
+
+function calculateMomentum(history){
+  if(!history||history.length<2)return 0;
+  const prices5=history.slice(-5).map(h=>h.price);
+  const first=prices5[0],last=prices5[prices5.length-1];
+  return first>0?(last-first)/first:0; // positive = upward momentum, negative = downward
+}
+
+function generateOdds(assetId){
+  const hist=prices[assetId]?.history;
+  const volatility=calculateVolatility(hist); // e.g. 0.01 to 0.08 typical range
+  const momentum=calculateMomentum(hist); // e.g. -0.05 to +0.05 typical range
+
+  // Base multiplier scales with volatility: low vol ≈ 1.3x, high vol ≈ 2.2x
+  // Clamp volatility into a sane range first
+  const v=Math.min(Math.max(volatility,0.005),0.10);
+  const base=1.3+((v-0.005)/(0.10-0.005))*(2.2-1.3);
+
+  // Momentum skews UP vs DOWN: strong upward momentum makes "UP" the "expected" continuation,
+  // so continuing the trend pays slightly LESS (more people would guess it), reversing pays MORE.
+  let skew=Math.min(Math.max(momentum*4,-0.35),0.35); // clamp skew
+
+  // Minimum skew floor: only kicks in if the organic skew is too small to produce a
+  // meaningful difference between UP and DOWN on its own (a near-flat 5-day trend).
+  // Never overrides a genuine organic skew that's already large enough.
+  const MIN_SKEW=0.04;
+  if(Math.abs(skew)<MIN_SKEW){
+    // Derive a stable, asset-specific direction for the floor so it doesn't flicker
+    // randomly between visits — based on the asset's id and current day, not pure chance.
+    const dayKey=new Date().toISOString().slice(0,10);
+    let hash=0;
+    const seed=assetId+dayKey;
+    for(let i=0;i<seed.length;i++){hash=(hash*31+seed.charCodeAt(i))&0xffffffff;}
+    const direction=(hash%2===0)?1:-1;
+    skew=MIN_SKEW*direction;
+  }
+
+  let upMult=base-skew;   // if momentum positive (uptrend), UP pays less, DOWN pays more
+  let downMult=base+skew;
+
+  // Keep within reasonable bounds similar to fractional odds 3/4 (1.75x) .. 11/8 (2.375x) territory
+  upMult=Math.min(Math.max(upMult,1.4),2.6);
+  downMult=Math.min(Math.max(downMult,1.4),2.6);
+
+  return{up:parseFloat(upMult.toFixed(2)),down:parseFloat(downMult.toFixed(2))};
+}
+
+function multiplierToFraction(mult){
+  // Converts a decimal multiplier (e.g. 1.75) to a simple fractional odds display (e.g. 3/4)
+  const profitPer1=mult-1; // profit portion per $1 staked
+  // Find a simple fraction approximation
+  let bestNum=1,bestDen=1,bestDiff=Infinity;
+  for(let den=1;den<=12;den++){
+    const num=Math.round(profitPer1*den);
+    if(num<=0)continue;
+    const diff=Math.abs((num/den)-profitPer1);
+    if(diff<bestDiff){bestDiff=diff;bestNum=num;bestDen=den;}
+  }
+  return`${bestDen}/${bestNum}`; // "stake/profit" e.g. 4/7
+}
+
+
+function populateTradeForm(assetId){
+  const a=ALL.find(x=>x.id===assetId);
+  const p=prices[assetId];const isUp=(p?.change??0)>=0;
+  const bal=balances[assetId];
+  const el=id=>document.getElementById(id);
+
+  // Generate fresh odds for this trade
+  currentOdds=generateOdds(assetId);
+
+  if(el('tf-flag'))el('tf-flag').textContent=a?.flag||'';
+  if(el('tf-name'))el('tf-name').textContent=a?.name||'';
+  const tfBs=getBlockState(assetId);
+  if(el('tf-meta'))el('tf-meta').textContent=(a?.unit||'')+' · Settles '+getSettlementLabel(a)+' · Block '+tfBs.block+'/10 ('+tfBs.tradesInBlock+'/3)'+(a?.unit==='Contracts'&&!isCommodityMarketOpen()?' · '+commodityStatusLabel():'');
+  if(el('tf-balance'))el('tf-balance').textContent=fmtCcy(bal);
+  if(el('tf-price'))el('tf-price').textContent=fmt(p?.current);
+  if(el('tf-change')){el('tf-change').textContent=(isUp?'▲':'▼')+' '+Math.abs(p?.change??0)+'%';el('tf-change').style.color=isUp?'#16a34a':'#dc2626';}
+  if(el('tf-unit-label'))el('tf-unit-label').textContent=a?.unit||'Units';
+  if(el('tf-max'))el('tf-max').textContent='Max stake: '+fmtCcy(bal);
+  if(el('units-display'))el('units-display').textContent='1';
+  renderUnitQuickBtns(assetId);
+  if(el('stake-display'))el('stake-display').textContent='$0';
+  if(el('tf-cost'))el('tf-cost').textContent='$0.00';
+  if(el('tf-after'))el('tf-after').textContent=fmtCcy(bal);
+  if(el('tf-win-up'))el('tf-win-up').textContent='+$0.00';
+  if(el('tf-win-down'))el('tf-win-down').textContent='+$0.00';
+  if(el('tf-loss'))el('tf-loss').textContent='-$0.00';
+  if(el('odds-up'))el('odds-up').textContent=multiplierToFraction(currentOdds.up);
+  if(el('odds-down'))el('odds-down').textContent=multiplierToFraction(currentOdds.down);
+  if(el('btn-up')){el('btn-up').className='dir-btn up';el('btn-up').disabled=false;}
+  if(el('btn-down')){el('btn-down').className='dir-btn down';el('btn-down').disabled=false;}
+  if(el('tf-submit')){el('tf-submit').disabled=true;el('tf-submit').textContent='Complete all fields';}
+}
+
+function renderPositions(){
+  const el=id=>document.getElementById(id);
+  if(!trades.length){
+    if(el('pos-count'))el('pos-count').textContent='';
+    if(el('pos-list'))el('pos-list').innerHTML=`<div style="padding:32px;text-align:center"><div style="font-size:40px;margin-bottom:12px">📂</div><div style="font-size:16px;font-weight:700;margin-bottom:6px">No open positions</div><div style="font-size:13px;color:#6b7280">Tap any asset on Home to trade.</div></div>`;
+    return;
+  }
+  if(el('pos-count'))el('pos-count').textContent=trades.length+' active trade'+(trades.length!==1?'s':'');
+  if(el('pos-list'))el('pos-list').innerHTML=trades.map(t=>{
+    const a=ALL.find(x=>x.id===t.assetId);
+    const cost=t.stake*t.units;
+
+    if(t.awaitingClose){
+      // Distinct prompt — visually separate from a normal open trade card —
+      // specifically asking for the real closing price before this can settle.
+      return`<div class="trade-ticket" style="background:#eff6ff;border:2px solid #93c5fd">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+          <div><div style="font-size:15px;font-weight:800">${a?.flag} ${t.assetName}</div>
+          <div style="font-size:12px;color:#1d4ed8;font-weight:700">⏳ Trading day closed — awaiting your closing price</div></div>
+          <span style="font-size:13px;font-weight:800;color:${t.direction==='UP'?'#16a34a':'#dc2626'};background:${t.direction==='UP'?'#dcfce7':'#fee2e2'};padding:2px 8px;border-radius:6px">${t.direction==='UP'?'▲ UP':'▼ DOWN'}</span>
+        </div>
+        <div style="font-size:12px;color:#374151;margin-bottom:10px">
+          Entry: <strong>${fmt(t.entryPrice)}</strong>${t.entryWasManual?' <span style="color:#92400e;font-weight:700">(manual)</span>':''}
+          · Stake: <strong>${fmtCcy(t.stake)}</strong> · Units: <strong>${t.units}</strong> · Cost: <strong>${fmtCcy(cost)}</strong>
+        </div>
+        <label style="font-size:11px;font-weight:700;color:#1d4ed8;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">Enter ${a?.name}'s real closing price</label>
+        <div style="display:flex;gap:8px">
+          <input type="text" inputmode="decimal" id="close-input-${t.id}" placeholder="e.g. 8431.61" style="flex:1;padding:10px 12px;border:1px solid #93c5fd;border-radius:8px;font-size:15px;outline:none;background:#fff;">
+          <button onclick="submitClosingPrice(${t.id})" style="background:#1d4ed8;color:#fff;border:none;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">Settle Trade</button>
+        </div>
+      </div>`;
+    }
+
+    const cur=prices[t.assetId]?.current??t.entryPrice;
+    const winning=t.direction==='UP'?cur>t.entryPrice:cur<t.entryPrice;
+    const diff=cur-t.entryPrice;
+    const pct=((Math.abs(diff)/t.entryPrice)*100).toFixed(2);
+    return`<div class="trade-ticket ${winning?'win-ticket':'loss-ticket'}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+        <div><div style="font-size:15px;font-weight:800">${a?.flag} ${t.assetName}</div>
+        <div style="font-size:12px;color:#6b7280">${t.units} ${t.unit} · Settles ${t.settleLabel}</div></div>
+        <span style="font-size:13px;font-weight:800;color:${t.direction==='UP'?'#16a34a':'#dc2626'};background:${t.direction==='UP'?'#dcfce7':'#fee2e2'};padding:2px 8px;border-radius:6px">${t.direction==='UP'?'▲ UP':'▼ DOWN'}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:#374151;margin-bottom:6px">
+        <span>Entry: <strong>${fmt(t.entryPrice)}</strong>${t.entryWasManual?' <span style="color:#92400e;font-weight:700">(manual)</span>':''}</span>
+        <span>Now: <strong>${fmt(cur)}</strong></span>
+        <span style="color:${winning?'#16a34a':'#dc2626'}">${diff>0?'+':''}${fmt(diff)} (${pct}%)</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:#374151;margin-bottom:6px">
+        <span>Stake: <strong>${fmtCcy(t.stake)}</strong></span>
+        <span>Units: <strong>${t.units}</strong></span>
+        <span>Cost: <strong>${fmtCcy(cost)}</strong></span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:#374151;margin-bottom:10px">
+        <span>Odds: <strong>${t.oddsFraction??'—'}</strong></span>
+        <span>Potential win: <strong style="color:#16a34a">${fmtCcy(t.potentialProfit??cost)}</strong></span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:12px;color:#6b7280">ID: ${t.id} · Block ${t.block??'—'}</span>
+        <button onclick="closeTrade(${t.id})" style="background:#000;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer">Close Trade</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+let tradeHistoryExpanded=false;
+
+function toggleTradeHistory(){
+  tradeHistoryExpanded=!tradeHistoryExpanded;
+  renderHistory();
+}
+
+function renderHistory(){
+  const sel=document.getElementById('perf-asset');
+  if(sel&&sel.options.length===0){
+    let html='<optgroup label="Indices">';
+    INDICES.forEach(a=>{html+=`<option value="${a.id}">${a.flag} ${a.name}</option>`;});
+    html+='</optgroup><optgroup label="Commodities">';
+    COMMODITIES.forEach(a=>{html+=`<option value="${a.id}">${a.flag} ${a.name}</option>`;});
+    html+='</optgroup>';
+    sel.innerHTML=html;
+  }
+  renderPerfResult();
+  renderCycleLog();
+  renderEarlyClosures();
+  renderBenchmarkSection();
+  renderDrawdownLog();
+  const hl=document.getElementById('history-list');
+  const arrow=document.getElementById('trade-history-toggle-arrow');
+  const label=document.getElementById('trade-history-toggle-label');
+  if(label)label.textContent=`Trade History (${history.length})`;
+  if(arrow)arrow.textContent=tradeHistoryExpanded?'Hide ▴':'Show ▾';
+  if(hl)hl.style.display=tradeHistoryExpanded?'block':'none';
+  if(!hl||!tradeHistoryExpanded)return;
+  if(!history.length){hl.innerHTML=`<div style="text-align:center;color:#9ca3af;font-size:14px;padding:32px">No settled trades yet.</div>`;return;}
+  hl.innerHTML=history.map(t=>{
+    const a=ALL.find(x=>x.id===t.assetId);
+    const cost=t.stake*t.units;
+    return`<div style="border:1px solid ${t.status==='WIN'?'#bbf7d0':'#fecaca'};border-radius:10px;padding:12px;background:${t.status==='WIN'?'#f0fdf4':'#fef2f2'};margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span style="font-size:14px;font-weight:700">${a?.flag} ${t.assetName}</span>
+        <span style="font-size:13px;font-weight:800;color:${t.status==='WIN'?'#16a34a':'#dc2626'}">${t.status} ${t.pnl>=0?'+':''}${fmtCcy(t.pnl)}</span>
+      </div>
+      <div style="font-size:11px;color:#6b7280;display:flex;gap:10px;flex-wrap:wrap">
+        <span>${t.direction==='UP'?'▲ UP':'▼ DOWN'}</span>
+        <span>${t.units} ${t.unit}</span>
+        <span>Stake: ${fmtCcy(t.stake)}</span>
+        <span>Cost: ${fmtCcy(cost)}</span>
+        <span>Odds: ${t.oddsFraction??'—'}</span>
+        <span>Block: ${t.block??'—'}</span>
+        <span>${new Date(t.settledAt).toLocaleDateString('en-GB')}</span>
+        ${t.earlyClosed?'<span style="color:#f59e0b">Early close</span>':''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function populateCycleAssetFilter(){
+  const sel=document.getElementById('cycle-filter-asset');
+  if(!sel||sel.options.length>1)return; // only build once
+  ALL.forEach(a=>{
+    const opt=document.createElement('option');
+    opt.value=a.id;opt.textContent=a.name;
+    sel.appendChild(opt);
+  });
+}
+
+function clearCycleFilter(){
+  const assetSel=document.getElementById('cycle-filter-asset');
+  const from=document.getElementById('cycle-filter-from');
+  const to=document.getElementById('cycle-filter-to');
+  if(assetSel)assetSel.value='';
+  if(from)from.value='';
+  if(to)to.value='';
+  renderCycleLog();
+}
+
+function renderCycleLog(){
+  const cl=document.getElementById('cycle-log-list');
+  const summary=document.getElementById('cycle-log-summary');
+  if(!cl)return;
+  populateCycleAssetFilter();
+
+  const assetFilter=document.getElementById('cycle-filter-asset')?.value||'';
+  const fromVal=document.getElementById('cycle-filter-from')?.value||'';
+  const toVal=document.getElementById('cycle-filter-to')?.value||'';
+  const fromTs=fromVal?new Date(fromVal+'T00:00:00').getTime():null;
+  const toTs=toVal?new Date(toVal+'T23:59:59').getTime():null;
+
+  let entries=cycleLog.slice().sort((a,b)=>b.at-a.at); // most recent first, retroactively
+  if(assetFilter)entries=entries.filter(e=>e.assetId===assetFilter);
+  if(fromTs!=null)entries=entries.filter(e=>e.at>=fromTs);
+  if(toTs!=null)entries=entries.filter(e=>e.at<=toTs);
+
+  if(summary){
+    if(!cycleLog.length)summary.textContent='';
+    else summary.textContent=`Showing ${entries.length} of ${cycleLog.length} total event${cycleLog.length!==1?'s':''}`;
+  }
+
+  if(!entries.length){
+    cl.innerHTML=`<div style="text-align:center;color:#9ca3af;font-size:14px;padding:24px">${cycleLog.length?'No block movements match this filter.':'No block movements yet.'}</div>`;
+    return;
+  }
+  const labels={
+    WIN:{text:'✅ Win — cycle reset',color:'#16a34a',bg:'#f0fdf4',border:'#bbf7d0'},
+    BLOCK_ADVANCE:{text:'⬆️ Block advanced',color:'#92400e',bg:'#fffbeb',border:'#fde68a'},
+    FULL_CYCLE_EXHAUSTED:{text:'🔁 Full cycle exhausted — reset',color:'#dc2626',bg:'#fef2f2',border:'#fecaca'}
+  };
+  cl.innerHTML=entries.map(e=>{
+    const l=labels[e.type]||{text:e.type,color:'#374151',bg:'#f9fafb',border:'#e5e7eb'};
+    return`<div style="border:1px solid ${l.border};border-radius:10px;padding:10px 12px;background:${l.bg};margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span style="font-size:13px;font-weight:700">${e.assetName}</span>
+        <span style="font-size:12px;font-weight:800;color:${l.color}">${l.text}</span>
+      </div>
+      <div style="font-size:11px;color:#6b7280;display:flex;gap:10px;flex-wrap:wrap">
+        <span>Block ${e.fromBlock} → ${e.toBlock}</span>
+        <span>Unbreached cycles since last win: ${e.breachesSinceWin}</span>
+        <span>${new Date(e.at).toLocaleString('en-GB')}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Early Closures ──────────────────────────────────────────────────────────
+// Flags every trade you ended manually via "Close Trade" before its
+// scheduled settlement time, whether to lock in a profit or limit a loss.
+let earlyClosuresExpanded=false;
+
+function toggleEarlyClosures(){
+  earlyClosuresExpanded=!earlyClosuresExpanded;
+  renderEarlyClosures();
+}
+
+function populateEarlyClosuresAssetFilter(){
+  const sel=document.getElementById('ec-filter-asset');
+  if(!sel||sel.options.length>1)return;
+  ALL.forEach(a=>{
+    const opt=document.createElement('option');
+    opt.value=a.id;opt.textContent=a.name;
+    sel.appendChild(opt);
+  });
+}
+
+function clearEarlyClosuresFilter(){
+  const assetSel=document.getElementById('ec-filter-asset');
+  const from=document.getElementById('ec-filter-from');
+  const to=document.getElementById('ec-filter-to');
+  if(assetSel)assetSel.value='';
+  if(from)from.value='';
+  if(to)to.value='';
+  renderEarlyClosures();
+}
+
+function renderEarlyClosures(){
+  const list=document.getElementById('early-closures-list');
+  const filtersBox=document.getElementById('early-closures-filters');
+  const summary=document.getElementById('early-closures-summary');
+  const arrow=document.getElementById('early-closures-toggle-arrow');
+  const label=document.getElementById('early-closures-toggle-label');
+  if(!list)return;
+
+  const earlyTrades=history.filter(t=>t.earlyClosed);
+  if(label)label.textContent=`Early Closures (${earlyTrades.length})`;
+  if(arrow)arrow.textContent=earlyClosuresExpanded?'Hide ▴':'Show ▾';
+  if(filtersBox)filtersBox.style.display=earlyClosuresExpanded?'flex':'none';
+  if(summary)summary.style.display=earlyClosuresExpanded?'block':'none';
+  list.style.display=earlyClosuresExpanded?'block':'none';
+  if(!earlyClosuresExpanded)return;
+
+  populateEarlyClosuresAssetFilter();
+  const assetFilter=document.getElementById('ec-filter-asset')?.value||'';
+  const fromVal=document.getElementById('ec-filter-from')?.value||'';
+  const toVal=document.getElementById('ec-filter-to')?.value||'';
+  const fromTs=fromVal?new Date(fromVal+'T00:00:00').getTime():null;
+  const toTs=toVal?new Date(toVal+'T23:59:59').getTime():null;
+
+  let entries=earlyTrades.slice().sort((a,b)=>b.settledAt-a.settledAt);
+  if(assetFilter)entries=entries.filter(e=>e.assetId===assetFilter);
+  if(fromTs!=null)entries=entries.filter(e=>e.settledAt>=fromTs);
+  if(toTs!=null)entries=entries.filter(e=>e.settledAt<=toTs);
+
+  if(summary)summary.textContent=`Showing ${entries.length} of ${earlyTrades.length} early closure${earlyTrades.length!==1?'s':''}`;
+
+  if(!entries.length){
+    list.innerHTML=`<div style="text-align:center;color:#9ca3af;font-size:14px;padding:24px">${earlyTrades.length?'No early closures match this filter.':'No trades have been closed early yet.'}</div>`;
+    return;
+  }
+  list.innerHTML=entries.map(t=>{
+    const isLockIn=t.status==='WIN';
+    return`<div style="border:1px solid ${isLockIn?'#bbf7d0':'#fecaca'};border-radius:10px;padding:10px 12px;background:${isLockIn?'#f0fdf4':'#fef2f2'};margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span style="font-size:13px;font-weight:700">${t.flag||''} ${t.assetName}</span>
+        <span style="font-size:12px;font-weight:800;color:${isLockIn?'#16a34a':'#dc2626'}">${isLockIn?'🔒 Profit locked':'✂️ Loss limited'} ${t.pnl>=0?'+':''}${fmtCcy(t.pnl)}</span>
+      </div>
+      <div style="font-size:11px;color:#6b7280;display:flex;gap:10px;flex-wrap:wrap">
+        <span>${t.direction==='UP'?'▲ UP':'▼ DOWN'}</span>
+        <span>Entry: ${fmt(t.entryPrice)}</span>
+        <span>Exit: ${fmt(t.exitPrice)}</span>
+        <span>Block ${t.block??'—'}</span>
+        <span>Original settle: ${t.settleLabel||'—'}</span>
+        <span>Closed early: ${new Date(t.settledAt).toLocaleString('en-GB')}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Benchmark Comparison (live, forward-tracking) ─────────────────────────────
+// Starts tracking from the moment you activate it and runs forward only —
+// compares your actual trading P&L on an asset against simply buying and
+// holding that same real asset from that starting point. Each of the 10
+// tradeable assets already IS its own real-world benchmark (the app pulls
+// its actual live Yahoo Finance price), so tracking just snapshots the
+// current live price as the baseline — no historical fetch needed. Shown
+// both in the P&L section AND live on that asset's own Detail page, so
+// someone watching the asset page directly (without P&L access) can still
+// see the comparison and the date range note.
+let benchmarkTracking={};
+let frictionEnabled=false;
+const FRICTION_PCT=0.0004; // tiny simulated bid/ask spread — 0.04% total, split half on entry, half on exit
+let bmSelectedAssets=new Set();
+let bmTimelineMode='open'; // 'open' | 'enddate' | 'duration'
+let bmDurationDays=3;
+
+function setBmTimelineMode(mode){
+  bmTimelineMode=mode;
+  ['open','enddate','duration'].forEach(m=>{
+    const btn=document.getElementById('bm-mode-'+m);
+    if(btn){btn.style.background=m===mode?'#000':'#fff';btn.style.color=m===mode?'#fff':'#000';}
+  });
+  const enddateBox=document.getElementById('bm-enddate-input');
+  const durationBox=document.getElementById('bm-duration-input');
+  if(enddateBox)enddateBox.style.display=mode==='enddate'?'block':'none';
+  if(durationBox)durationBox.style.display=mode==='duration'?'block':'none';
+}
+
+function setBmDuration(days){
+  bmDurationDays=days;
+  [1,3,7,30].forEach(d=>{
+    const btn=document.getElementById('bm-dur-'+d);
+    if(btn){btn.style.background=d===days?'#000':'#fff';btn.style.color=d===days?'#fff':'#000';}
+  });
+}
+
+
+function renderBmAssetChips(){
+  const box=document.getElementById('bm-asset-chips');
+  if(!box)return;
+  box.innerHTML=ALL.filter(a=>!benchmarkTracking[a.id]).map(a=>
+    `<button type="button" onclick="toggleBmAsset('${a.id}')" id="bm-chip-${a.id}" style="padding:6px 12px;border-radius:16px;border:1px solid #e5e7eb;background:${bmSelectedAssets.has(a.id)?'#000':'#fff'};color:${bmSelectedAssets.has(a.id)?'#fff':'#000'};font-size:12px;cursor:pointer">${a.flag} ${a.name}</button>`
+  ).join('')||'<span style="font-size:11px;color:#9ca3af">All assets are currently being tracked</span>';
+}
+
+function toggleBmAsset(assetId){
+  if(bmSelectedAssets.has(assetId))bmSelectedAssets.delete(assetId);
+  else bmSelectedAssets.add(assetId);
+  renderBmAssetChips();
+}
+
+function startBenchmarkTracking(){
+  if(!bmSelectedAssets.size){showToast('Pick at least one asset to start comparing');return;}
+  let endAt=null;
+  if(bmTimelineMode==='enddate'){
+    const val=document.getElementById('bm-end-datetime')?.value;
+    if(!val){showToast('Pick an end date and time');return;}
+    endAt=new Date(val).getTime();
+    if(isNaN(endAt)||endAt<=Date.now()){showToast('End date/time must be in the future');return;}
+  } else if(bmTimelineMode==='duration'){
+    endAt=Date.now()+bmDurationDays*86400000;
+  }
+  const now=Date.now();
+  bmSelectedAssets.forEach(assetId=>{
+    const p=prices[assetId];
+    if(!p?.current)return;
+    benchmarkTracking[assetId]={
+      startedAt:now,
+      endAt,
+      startPrice:p.current,
+      startBalance:balances[assetId],
+      priceLog:[{ts:now,price:p.current}]
+    };
+  });
+  bmSelectedAssets.clear();
+  save('benchmarkTracking',benchmarkTracking);
+  showToast('Comparison started — tracking live from now');
+  renderBenchmarkSection();
+  if(currentPage==='detail')renderDetail(currentDetailAsset);
+}
+
+function stopBenchmarkTracking(assetId){
+  delete benchmarkTracking[assetId];
+  save('benchmarkTracking',benchmarkTracking);
+  renderBenchmarkSection();
+  if(currentPage==='detail')renderDetail(currentDetailAsset);
+}
+
+// Called on every price refresh cycle (~60s) for any asset currently being
+// tracked, so the live price timeline builds up in real time.
+function logBenchmarkPricePoints(){
+  let changed=false;
+  Object.keys(benchmarkTracking).forEach(assetId=>{
+    const t=benchmarkTracking[assetId];
+    if(t.endAt&&Date.now()>t.endAt)return; // frozen — comparison window has ended
+    const p=prices[assetId];
+    if(!p?.current)return;
+    t.priceLog.push({ts:Date.now(),price:p.current});
+    if(t.priceLog.length>2000)t.priceLog=t.priceLog.slice(-2000); // cap growth
+    changed=true;
+  });
+  if(changed)save('benchmarkTracking',benchmarkTracking);
+}
+
+// Reconstructs a step-wise equity curve for an asset from its tracking start
+// to now, using the same opening-balance trick as calcPerf.
+function buildEquityCurve(assetId,fromTs){
+  const toTs=Date.now();
+  const inRange=history.filter(t=>t.assetId===assetId&&t.settledAt>=fromTs&&t.settledAt<=toTs).sort((a,b)=>a.settledAt-b.settledAt);
+  const rangePnl=inRange.reduce((s,t)=>s+t.pnl,0);
+  const closingBalance=balances[assetId];
+  const openingBalance=closingBalance-rangePnl;
+  let running=openingBalance;
+  const curve=[{ts:fromTs,value:running}];
+  inRange.forEach(t=>{running+=t.pnl;curve.push({ts:t.settledAt,value:running});});
+  if(curve[curve.length-1].ts<toTs)curve.push({ts:toTs,value:running});
+  return{curve,openingBalance,closingBalance:running,pnl:rangePnl,tradeCount:inRange.length};
+}
+
+// Draws two normalized lines (both starting at 100) on one small chart.
+function dualLineChartSVG(seriesA,colorA,seriesB,colorB){
+  const W=320,H=130,pL=36,pR=12,pT=12,pB=16,iW=W-pL-pR,iH=H-pT-pB;
+  const all=[...seriesA,...seriesB];
+  const min=Math.min(...all)*0.98,max=Math.max(...all)*1.02,range=max-min||1;
+  const toX=(i,len)=>len>1?pL+(i/(len-1))*iW:pL;
+  const toY=v=>pT+iH-((v-min)/range)*iH;
+  const line=(series,color)=>{
+    const pts=series.map((v,i)=>toX(i,series.length)+','+toY(v)).join(' ');
+    return`<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>`;
+  };
+  let svg=`<svg width="100%" viewBox="0 0 ${W} ${H}">`;
+  [min,(min+max)/2,max].forEach(v=>{const y=toY(v);svg+=`<line x1="${pL}" y1="${y}" x2="${W-pR}" y2="${y}" stroke="#f3f4f6" stroke-width="1"/><text x="${pL-4}" y="${y+3}" text-anchor="end" font-size="8" fill="#9ca3af">${v.toFixed(0)}</text>`;});
+  svg+=line(seriesB,colorB);
+  svg+=line(seriesA,colorA);
+  return svg+'</svg>';
+}
+
+// Builds the shared comparison card HTML for one tracked asset. Used both in
+// the P&L section (with a Stop button) and on the asset's own Detail page
+// (read-only note, no Stop button — kept minimal for anyone just viewing it).
+function benchmarkCardHTML(assetId,withStopButton){
+  const t=benchmarkTracking[assetId];
+  if(!t)return'';
+  const a=ALL.find(x=>x.id===assetId);
+  const p=prices[assetId];
+  const isComplete=t.endAt&&Date.now()>=t.endAt;
+  const currentPrice=p?.current??t.startPrice;
+  const bmPct=((currentPrice-t.startPrice)/t.startPrice*100);
+  const eq=buildEquityCurve(assetId,t.startedAt);
+  const tradingPct=eq.openingBalance>0?((eq.pnl/eq.openingBalance)*100):0;
+  const seriesB=t.priceLog.map(pt=>(pt.price/t.startPrice)*100);
+  const seriesA=eq.curve.map(pt=>(pt.value/eq.openingBalance)*100);
+  const beat=tradingPct>bmPct;
+  const fmtDT=ts=>new Date(ts).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+  const startedLabel=fmtDT(t.startedAt);
+  let timelineLabel;
+  if(!t.endAt)timelineLabel=`Comparing since ${startedLabel} · open-ended`;
+  else if(isComplete)timelineLabel=`Comparing since ${startedLabel} · completed ${fmtDT(t.endAt)}`;
+  else timelineLabel=`Comparing since ${startedLabel} · ends ${fmtDT(t.endAt)}`;
+  return`<div style="border:1px solid #e5e7eb;border-radius:10px;padding:12px;margin-bottom:10px;background:#fff">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+      <span style="font-size:13px;font-weight:700">${a.flag} ${a.name}</span>
+      <span style="font-size:11px;font-weight:800;color:${beat?'#16a34a':'#dc2626'}">${beat?'✓ Beating buy & hold':'✗ Trailing buy & hold'}</span>
+    </div>
+    <div style="font-size:10px;color:#9ca3af;margin-bottom:8px">${timelineLabel}${isComplete?' <span style="color:#f59e0b;font-weight:700">· FINAL</span>':''}</div>
+    ${dualLineChartSVG(seriesA,'#000',seriesB,'#9ca3af')}
+    <div style="display:flex;gap:14px;font-size:11px;margin-top:6px;flex-wrap:wrap">
+      <span><span style="display:inline-block;width:8px;height:8px;background:#000;border-radius:50%;margin-right:4px"></span>Your trading: <strong style="color:${tradingPct>=0?'#16a34a':'#dc2626'}">${tradingPct>=0?'+':''}${tradingPct.toFixed(2)}%</strong></span>
+      <span><span style="display:inline-block;width:8px;height:8px;background:#9ca3af;border-radius:50%;margin-right:4px"></span>Buy &amp; hold: <strong style="color:${bmPct>=0?'#16a34a':'#dc2626'}">${bmPct>=0?'+':''}${bmPct.toFixed(2)}%</strong></span>
+    </div>
+    <div style="font-size:10px;color:#9ca3af;margin-top:4px">${eq.tradeCount} trade${eq.tradeCount!==1?'s':''} settled since tracking began</div>
+    ${withStopButton?`<button onclick="stopBenchmarkTracking('${assetId}')" style="margin-top:8px;width:100%;padding:7px 0;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;color:#6b7280;cursor:pointer">${isComplete?'Clear':'Stop Comparison'}</button>`:''}
+  </div>`;
+}
+
+function renderBenchmarkSection(){
+  renderBmAssetChips();
+  const resultsBox=document.getElementById('bm-results');
+  if(!resultsBox)return;
+  const trackedIds=Object.keys(benchmarkTracking);
+  resultsBox.innerHTML=trackedIds.length
+    ?trackedIds.map(id=>benchmarkCardHTML(id,true)).join('')
+    :'';
+}
+
+function renderPerfResult(){
+
+  const el=document.getElementById('perf-result');
+  if(!el)return;
+  if(!perfResult){el.innerHTML='';return;}
+  const isProfit=perfResult.pnl>=0;
+  const assetName=ALL.find(a=>a.id===perfResult.assetId)?.name||'';
+  el.innerHTML=`<div style="margin-top:12px;padding:14px;border-radius:8px;border:2px solid ${isProfit?'#bbf7d0':'#fecaca'};background:${isProfit?'#f0fdf4':'#fef2f2'}">
+    <div style="font-size:12px;color:#6b7280;margin-bottom:10px;text-align:center">${assetName} · ${perfResult.count} trade${perfResult.count!==1?'s':''}</div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid ${isProfit?'#bbf7d0':'#fecaca'}">
+      <div style="text-align:center;flex:1">
+        <div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">Opening Balance</div>
+        <div style="font-size:14px;font-weight:700">${fmtCcy(perfResult.openingBalance)}</div>
+      </div>
+      <div style="text-align:center;flex:1">
+        <div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">Closing Balance</div>
+        <div style="font-size:14px;font-weight:700">${fmtCcy(perfResult.closingBalance)}</div>
+      </div>
+    </div>
+    <div style="text-align:center">
+      <div style="font-size:13px;font-weight:700;margin-bottom:4px;color:${isProfit?'#16a34a':'#dc2626'}">${isProfit?'✅ PROFIT':'❌ LOSS'}</div>
+      <div style="font-size:28px;font-weight:800;color:${isProfit?'#16a34a':'#dc2626'}">${isProfit?'+':''}${fmtCcy(perfResult.pnl)}</div>
+      <div style="font-size:16px;font-weight:700;color:${isProfit?'#16a34a':'#dc2626'}">${isProfit?'+':''}${perfResult.pct}%</div>
+    </div>
+  </div>`;
+}
+
+// ── Trade Form Controls ───────────────────────────────────────────────────────
+function updateCostDisplay(){
+  const cost=tradeStake*tradeUnits;
+  const bal=balances[currentTradeAsset]||0;
+  const el=id=>document.getElementById(id);
+  if(el('tf-cost'))el('tf-cost').textContent=fmtCcy(cost);
+  if(el('tf-after'))el('tf-after').textContent=fmtCcy(bal-cost);
+  // Both potential win figures update live regardless of direction selection
+  const winUp=cost*(currentOdds.up-1);
+  const winDown=cost*(currentOdds.down-1);
+  if(el('tf-win-up'))el('tf-win-up').textContent='+'+fmtCcy(winUp);
+  if(el('tf-win-down'))el('tf-win-down').textContent='+'+fmtCcy(winDown);
+  if(el('tf-loss'))el('tf-loss').textContent='-'+fmtCcy(cost);
+  updateTradeBtn();
+}
+
+function setDir(d){
+  tradeDirection=d;
+  const ub=document.getElementById('btn-up');
+  const db=document.getElementById('btn-down');
+  if(ub)ub.className='dir-btn up'+(d==='UP'?' sel':'');
+  if(db)db.className='dir-btn down'+(d==='DOWN'?' sel':'');
+  updateCostDisplay();
+}
+
+// Indices keep the fine-grained fractional stepper (mimics fractional-lot
+// CFD/spread-bet sizing). Commodities step in whole contracts + a 0.1
+// mini-contract increment (mimics real micro/mini futures contract sizing —
+// e.g. Micro Gold is a fixed 1/10 of a standard Gold contract).
+function isContractAsset(assetId){
+  return ALL.find(x=>x.id===assetId)?.unit==='Contracts';
+}
+
+const UNIT_QUICK_BTNS={
+  Units:[0.01,0.1,0.5,1,5,10],
+  Contracts:[0.1,0.5,1,2,5,10]
+};
+
+function renderUnitQuickBtns(assetId){
+  const box=document.getElementById('units-quick-btns');
+  if(!box)return;
+  const type=isContractAsset(assetId)?'Contracts':'Units';
+  box.innerHTML=UNIT_QUICK_BTNS[type].map(v=>`<button class="qbtn" onclick="setUnits(${v})">${v}</button>`).join('');
+}
+
+function changeUnits(delta){
+  const isContract=isContractAsset(currentTradeAsset);
+  let step;
+  if(isContract){
+    step=0.1;
+    tradeUnits=Math.max(0.1,parseFloat((tradeUnits+(delta*step)).toFixed(1)));
+  } else {
+    if(tradeUnits>=1) step=0.25;
+    else if(tradeUnits>=0.1) step=0.1;
+    else step=0.01;
+    tradeUnits=Math.max(0.01,parseFloat((tradeUnits+(delta*step)).toFixed(2)));
+  }
+  const el=document.getElementById('units-display');
+  if(el)el.textContent=tradeUnits;
+  updateCostDisplay();
+}
+
+function setUnits(val){
+  if(isContractAsset(currentTradeAsset)){
+    tradeUnits=Math.max(0.1,parseFloat(val.toFixed(1)));
+  } else {
+    tradeUnits=val;
+  }
+  const el=document.getElementById('units-display');
+  if(el)el.textContent=tradeUnits;
+  updateCostDisplay();
+}
+
+function changeStake(delta){
+  const bal=balances[currentTradeAsset]||0;
+  tradeStake=Math.max(0,Math.min(bal/tradeUnits,tradeStake+delta));
+  const el=document.getElementById('stake-display');
+  if(el)el.textContent=fmtCcy(tradeStake);
+  updateCostDisplay();
+}
+
+function setStake(val){
+  const bal=balances[currentTradeAsset]||0;
+  tradeStake=Math.min(val,bal/tradeUnits);
+  const el=document.getElementById('stake-display');
+  if(el)el.textContent=fmtCcy(tradeStake);
+  updateCostDisplay();
+}
+
+function updateTradeBtn(){
+  const btn=document.getElementById('tf-submit');
+  if(!btn)return;
+  const cost=tradeStake*tradeUnits;
+  const bal=balances[currentTradeAsset]||0;
+  const canSubmit=tradeDirection&&tradeStake>0&&cost<=bal&&tradeUnits>=0.01;
+  btn.disabled=!canSubmit;
+  if(canSubmit){
+    const mult=tradeDirection==='UP'?currentOdds.up:currentOdds.down;
+    const potential=cost*(mult-1);
+    btn.textContent=`Place ${tradeDirection} Trade · Win ${fmtCcy(potential)}`;
+  } else {
+    btn.textContent='Complete all fields';
+  }
+}
+
+function submitTrade(){
+  const assetId=currentTradeAsset;
+  const a=ALL.find(x=>x.id===assetId);
+  const cost=tradeStake*tradeUnits;
+  const bal=balances[assetId];
+  if(!tradeDirection||tradeStake<=0||tradeUnits<0.01||cost>bal)return;
+  const settleAt=getSettlementTime(a);
+  const mult=tradeDirection==='UP'?currentOdds.up:currentOdds.down;
+  const oddsFraction=multiplierToFraction(mult);
+  const potentialProfit=parseFloat((cost*(mult-1)).toFixed(2));
+  // Use the manually entered closing price as entry price if one is set for this
+  // asset, otherwise fall back to the live feed price as before.
+  const hasOverride=manualPrices[assetId]!=null;
+  const rawEntryPrice=hasOverride?manualPrices[assetId]:prices[assetId]?.current;
+  const entryPrice=applyFriction(rawEntryPrice,tradeDirection,'entry');
+  const trade={
+    id:Date.now(),
+    assetId,assetName:a.name,unit:a.unit,flag:a.flag,
+    frictionApplied:frictionEnabled,
+    direction:tradeDirection,
+    stake:tradeStake,
+    units:tradeUnits,
+    cost:cost,
+    oddsMultiplier:mult,
+    oddsFraction:oddsFraction,
+    potentialProfit:potentialProfit,
+    entryPrice:entryPrice,
+    entryWasManual:hasOverride,
+    openedAt:Date.now(),
+    settleAt:settleAt,
+    settleLabel:getSettlementLabel(a),
+    block:getBlockState(assetId).block
+  };
+  trades.unshift(trade);
+  balances[assetId]=parseFloat((bal-cost).toFixed(2));
+  // The override has now done its one job — consume it so it doesn't silently
+  // apply to a future trade you place without realising it's still active.
+  if(hasOverride){delete manualPrices[assetId];save('manualPrices',manualPrices);}
+  save('balances',balances);save('trades',trades);
+  showToast(`✅ Trade placed: ${a.name} ${tradeDirection} · Odds ${oddsFraction} · Cost ${fmtCcy(cost)}${hasOverride?' · Entry: manual price':''}`);
+  // Show trade ticket
+  showTicket(trade);
+}
+
+function showTicket(trade){
+  const a=ALL.find(x=>x.id===trade.assetId);
+  const content=document.getElementById('ticket-content');
+  if(content){
+    content.innerHTML=`
+      <div class="neutral-ticket trade-ticket" style="margin-bottom:16px">
+        <div style="text-align:center;margin-bottom:12px">
+          <div style="font-size:32px;margin-bottom:4px">${trade.flag}</div>
+          <div style="font-size:18px;font-weight:800">${trade.assetName}</div>
+          <div style="font-size:13px;color:#6b7280">${trade.unit}</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;margin-bottom:10px">
+          <div style="text-align:center;flex:1">
+            <div style="font-size:10px;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Direction</div>
+            <div style="font-size:16px;font-weight:800;color:${trade.direction==='UP'?'#16a34a':'#dc2626'}">${trade.direction==='UP'?'▲ UP':'▼ DOWN'}</div>
+          </div>
+          <div style="text-align:center;flex:1">
+            <div style="font-size:10px;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Entry Price</div>
+            <div style="font-size:16px;font-weight:800">${fmt(trade.entryPrice)}</div>
+            ${trade.entryWasManual?'<div style="font-size:10px;color:#92400e;font-weight:700;margin-top:2px">Manual entry</div>':''}
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:10px">
+          <div style="text-align:center;flex:1">
+            <div style="font-size:10px;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Units</div>
+            <div style="font-size:15px;font-weight:700">${trade.units}</div>
+          </div>
+          <div style="text-align:center;flex:1">
+            <div style="font-size:10px;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Stake</div>
+            <div style="font-size:15px;font-weight:700">${fmtCcy(trade.stake)}</div>
+          </div>
+          <div style="text-align:center;flex:1">
+            <div style="font-size:10px;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Cost</div>
+            <div style="font-size:15px;font-weight:700">${fmtCcy(trade.cost)}</div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:10px">
+          <div style="text-align:center;flex:1">
+            <div style="font-size:10px;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Odds</div>
+            <div style="font-size:15px;font-weight:700">${trade.oddsFraction??'—'}</div>
+          </div>
+          <div style="text-align:center;flex:1">
+            <div style="font-size:10px;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Potential Win</div>
+            <div style="font-size:15px;font-weight:700;color:#16a34a">${fmtCcy(trade.potentialProfit??trade.cost)}</div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:10px">
+          <div style="text-align:center;flex:1">
+            <div style="font-size:10px;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Settles</div>
+            <div style="font-size:14px;font-weight:700">${trade.settleLabel}</div>
+          </div>
+          <div style="text-align:center;flex:1">
+            <div style="font-size:10px;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Cycle Block</div>
+            <div style="font-size:14px;font-weight:700">${trade.block??'—'}/10</div>
+          </div>
+        </div>
+        <button onclick="closeTrade(${trade.id})" style="width:100%;padding:12px 0;background:#dc2626;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px">
+          Close Trade (Lock in / Cut Loss)
+        </button>
+        <button onclick="showPage('positions')" style="width:100%;padding:12px 0;background:#000;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">
+          View All Positions
+        </button>
+      </div>`;
+  }
+  pageStack.push('ticket');
+  showPage('ticket',false);
+}
+
+// ── Close Trade ───────────────────────────────────────────────────────────────
+// Early closure now also requires you to confirm the real current price yourself,
+// rather than trusting the live feed, for exactly the same reason as full settlement.
+function closeTrade(id){
+  const t=trades.find(x=>x.id===id);
+  if(!t)return;
+  const input=prompt(`Enter the current real price for ${t.assetName} to close this trade now:`);
+  const val=parseFloat(input);
+  if(isNaN(val)||val<=0){showToast('Closure cancelled — no valid price entered');return;}
+  const idx=trades.findIndex(x=>x.id===id);
+  if(idx===-1)return;
+  const effectiveExit=applyFriction(val,t.direction,'exit');
+  const won=t.direction==='UP'?effectiveExit>t.entryPrice:effectiveExit<t.entryPrice;
+  const pnl=won?(t.potentialProfit??t.cost):-t.cost;
+  const returned=won?(t.cost+(t.potentialProfit??t.cost)):0;
+  balances[t.assetId]=parseFloat((balances[t.assetId]+returned).toFixed(2));
+  advanceCycle(t.assetId,won);
+  history.unshift({...t,exitPrice:effectiveExit,rawExitPrice:val,exitWasManual:true,pnl:parseFloat(pnl.toFixed(2)),settledAt:Date.now(),status:won?'WIN':'LOSS',earlyClosed:true});
+  trades.splice(idx,1);
+  save('balances',balances);save('trades',trades);save('history',history);
+  showToast(`${won?'✅ WIN':'❌ LOSS'}: ${t.assetName} → ${pnl>=0?'+':''}${fmtCcy(Math.abs(pnl))}`);
+  showPage('positions');
+}
+
+// ── End of Day Settlement ─────────────────────────────────────────────────────
+// Settlement no longer resolves automatically off the live feed. Once a trade's
+// scheduled close time passes, it's flagged as awaitingClose, and stays visibly
+// open in Positions until you personally enter that asset's real closing price.
+// This closes the gap where a manual opening benchmark could still be compared
+// against an unreliable live feed number at the moment of resolution.
+function checkSettlements(){
+  const now=Date.now();
+  let changed=false;
+  trades.forEach(t=>{
+    if(now>=t.settleAt && !t.awaitingClose){
+      t.awaitingClose=true;
+      showToast(`⏳ ${t.assetName} has reached its close — enter the real closing price to settle.`);
+      changed=true;
+    }
+  });
+  if(changed){
+    save('trades',trades);
+    if(currentPage==='positions')renderPositions();
+    if(currentPage==='home')renderHome();
+  }
+}
+
+// Resolves a trade using a closing price you've manually confirmed, rather than
+// the live feed. This is the only path that settles a flagged trade.
+function submitClosingPrice(tradeId){
+  const input=document.getElementById('close-input-'+tradeId);
+  const val=parseFloat(input?.value);
+  if(isNaN(val)||val<=0){showToast('Enter a valid closing price');return;}
+  const idx=trades.findIndex(t=>t.id===tradeId);
+  if(idx===-1)return;
+  const t=trades[idx];
+  const effectiveExit=applyFriction(val,t.direction,'exit');
+  const won=t.direction==='UP'?effectiveExit>t.entryPrice:effectiveExit<t.entryPrice;
+  const pnl=won?(t.potentialProfit??t.cost):-t.cost;
+  const returned=won?(t.cost+(t.potentialProfit??t.cost)):0;
+  balances[t.assetId]=parseFloat((balances[t.assetId]+returned).toFixed(2));
+  advanceCycle(t.assetId,won);
+  history.unshift({...t,exitPrice:effectiveExit,rawExitPrice:val,exitWasManual:true,pnl:parseFloat(pnl.toFixed(2)),settledAt:Date.now(),status:won?'WIN':'LOSS'});
+  trades.splice(idx,1);
+  save('balances',balances);save('trades',trades);save('history',history);
+  showToast(`${won?'✅ WIN':'❌ LOSS'}: ${t.assetName} settled → ${pnl>=0?'+':''}${fmtCcy(Math.abs(pnl))}`);
+  renderPositions();
+  if(currentPage==='home')renderHome();
+}
+
+// ── Performance ───────────────────────────────────────────────────────────────
+function calcPerf(){
+  const assetId=document.getElementById('perf-asset')?.value;
+  const from=new Date(document.getElementById('perf-from')?.value||'').getTime();
+  const to=new Date(document.getElementById('perf-to')?.value||'').getTime()+86400000;
+  if(!assetId||isNaN(from)||isNaN(to))return;
+  const filtered=history.filter(t=>t.assetId===assetId&&t.settledAt>=from&&t.settledAt<=to);
+  const pnl=filtered.reduce((s,t)=>s+t.pnl,0);
+  const closingBalance=balances[assetId];
+  const openingBalance=closingBalance-pnl;
+  const pct=openingBalance>0?((pnl/openingBalance)*100).toFixed(2):0;
+  perfResult={count:filtered.length,pnl,openingBalance,closingBalance,pct,assetId};
+  renderPerfResult();
+}
+
+// ── Export / Import (for carrying data across hosting moves) ──────────────────
+// localStorage is tied to the exact web address you're on — moving to a new
+// host or a new site URL always starts fresh, with no way around that. This
+// lets you manually export everything to a file, then import it back in on
+// whatever new address you move to next, so nothing is actually lost.
+function exportData(){
+  const bundle={
+    exportedAt:new Date().toISOString(),
+    balances,trades,history,blockState,cycleLog,manualPrices,benchmarkTracking,frictionEnabled
+  };
+  const blob=new Blob([JSON.stringify(bundle,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const stamp=new Date().toISOString().slice(0,10);
+  a.href=url;a.download=`tradeprediction-backup-${stamp}.json`;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('Backup file downloaded');
+}
+
+function importData(event){
+  const file=event.target.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const data=JSON.parse(e.target.result);
+      if(!data||typeof data!=='object')throw new Error('bad file');
+      if(!confirm('Import this backup? This will replace all current balances, trades, and history on this device.')){
+        event.target.value='';
+        return;
+      }
+      balances=data.balances||initBalances();
+      trades=data.trades||[];
+      history=data.history||[];
+      blockState=data.blockState||{};
+      cycleLog=data.cycleLog||[];
+      manualPrices=data.manualPrices||{};
+      benchmarkTracking=data.benchmarkTracking||{};
+      frictionEnabled=data.frictionEnabled||false;
+      save('balances',balances);save('trades',trades);save('history',history);
+      save('blockState',blockState);save('cycleLog',cycleLog);save('manualPrices',manualPrices);
+      save('benchmarkTracking',benchmarkTracking);save('frictionEnabled',frictionEnabled);
+      showToast('Backup imported successfully');
+      showPage('home',false);
+    }catch(err){
+      showToast('Could not read that file — is it a valid backup?');
+    }
+    event.target.value='';
+  };
+  reader.readAsText(file);
+}
+
+// ── Reset ─────────────────────────────────────────────────────────────────────
+function resetConfirm(){
+  if(confirm('Reset all balances and trade history? This cannot be undone.')){
+    balances=initBalances();trades=[];history=[];blockState={};cycleLog=[];benchmarkTracking={};
+    save('balances',balances);save('trades',trades);save('history',history);
+    save('blockState',blockState);save('cycleLog',cycleLog);save('benchmarkTracking',benchmarkTracking);
+    showToast('Platform reset — all balances restored to $1,000,000');
+    pageStack=['home'];
+    showPage('home',false);
+  }
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+document.getElementById('back-btn').addEventListener('click',goBack);
+loadData();
+initPrices();
+updateClock();
+setInterval(updateClock,1000);
+setInterval(fetchAllPrices,60000);
+setInterval(checkSettlements,60000);
+showPage('home',false);
+pageStack=['home'];
+</script>
+</body>
+</html>
